@@ -1,0 +1,106 @@
+package uq.spatial;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+import gnu.trove.procedure.TIntProcedure;
+import net.sf.jsi.Rectangle;
+import net.sf.jsi.rtree.RTree;
+
+
+/**
+ * A serializable 1D RTree of segments time-stamp.
+ * 
+ * @author uqdalves
+ *
+ */
+@SuppressWarnings("serial")
+public class SegmentRTree extends RTree implements Serializable, GeoInterface{
+	// the list of trajectories in this tree
+	private List<Segment> segmentList = 
+			new ArrayList<Segment>();
+	// null dimension
+	private static final float NULL_DIM = 1;
+	
+	/**
+	 * Initialize this tree
+	 */
+	public SegmentRTree() {
+		super();
+		super.init(null);
+	}
+
+	/**
+	 * True is this tree is empty or null.
+	 */
+	public boolean isEmpty(){
+		return (this.size()==0);
+	}
+	
+	/**
+	 * Add a segment to this tree. 
+	 */
+	public void add(Segment s){
+		// add the time-stamp of this segment to the RTree
+		// add as a rectangle of base=time-stamp and height=NULL_DIM
+		Rectangle r = new Rectangle(s.t1, NULL_DIM, s.t2, NULL_DIM);
+		super.add(r, segmentList.size());
+		this.segmentList.add(s);
+	}
+	
+	/**
+	 * Add a list of segments to this tree. 
+	 */
+	public void addAll(List<Segment> sList){
+		for(Segment s : sList){
+			this.add(s);
+		}
+	}
+
+	/**
+	 * Given a time interval, return the segments in this
+	 * tree whose time stamp overlap with the given time interval.
+	 */
+	public List<Segment> getSegmentsByTime(final long t1, final long t2){
+		final List<Segment> sList = 
+				new ArrayList<Segment>();
+		if(isEmpty()){
+			return sList;
+		}
+		final Rectangle r = new Rectangle(t1, NULL_DIM, t2, NULL_DIM);
+		this.intersects(r, new TIntProcedure() {
+			public boolean execute(int i) {
+				sList.add(segmentList.get(i));	
+				return true;  // continue receiving results
+			}
+		});
+		return sList;
+	}
+
+	/**
+	 * Return a list with all segments in this tree.
+	 */
+	public List<Segment> getSegmentsList() {
+		return segmentList;
+	}
+	
+	/**
+	 * The number of segments in this tree.
+	 */
+	public int numSegments(){
+		return segmentList.size();
+	}
+	
+	/**
+	 * Merge these two segment trees.
+	 * 
+	 * @return Return this merged tree.
+	 */
+	public SegmentRTree merge(SegmentRTree tree){
+		for(Segment s : tree.segmentList){
+			this.add(s);
+		}
+		return this;
+	}
+}
