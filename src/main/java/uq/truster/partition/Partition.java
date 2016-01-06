@@ -3,14 +3,14 @@ package uq.truster.partition;
 import java.io.Serializable;
 import java.util.List;
 
-import uq.spatial.Segment;
+import uq.spatial.STSegment;
 import uq.spatial.SegmentRTree;
 
 /**
  * A data partition.
- * Each partition represents a partition in the 
- * grid representation (rectangle), and contains 
- * a RTree of segments that overlap with that rectangle.
+ * Each partition represents a rectangle in the 
+ * grid representation, and contains a RTree with 
+ * the segments that overlap with that rectangle.
  * 
  * @author uqdalves
  *
@@ -18,8 +18,7 @@ import uq.spatial.SegmentRTree;
 @SuppressWarnings("serial")
 public class Partition implements Serializable {
 	/**
-	 * The tree containing the MBR of the 
-	 * trajectories/sub-trajectories in this page
+	 * The tree containing the segments in this partition.
 	 */
 	private SegmentRTree segmentTree = 
 			new SegmentRTree();
@@ -27,14 +26,14 @@ public class Partition implements Serializable {
 	/**
 	 * Add a segment to this partition.
 	 */
-	public void add(Segment s){
+	public void add(STSegment s){
 		segmentTree.add(s);
 	}
 	
 	/**
 	 * The list of segments in this partition.
 	 */
-	public List<Segment> getSegmentsList(){
+	public List<STSegment> getSegmentsList(){
 		return segmentTree.getSegmentsList();
 	}
 	

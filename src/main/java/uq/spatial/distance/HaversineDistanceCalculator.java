@@ -13,44 +13,47 @@ import uq.spatial.Point;
  *
  */
 @SuppressWarnings("serial")
-public class HaversineDistanceCalculator implements Serializable, GeoInterface{
-
-	/**
-	 * Calculate the distance (in meters) between two points 
-	 * on a sphere. Points represented by latitude and 
-	 * longitude on the Earth surface.
-	 */
-	public static double getDistance(double lon1, double lat1, double lon2, double lat2){
-		return haversineDistance(lon1, lat1, lon2, lat2, EARTH_RADIUS);
-	}
-
-	/**
-	 * Calculate the distance (in meters) between two 
-	 * points on a sphere. Points represented by polar  
-	 * coordinates on a given sphere of radius R.
-	 */
-	public static double getDistance(double lon1, double lat1, double lon2, double lat2, double radius){
-		return haversineDistance(lon1, lat1, lon2, lat2, radius);
-	}
+public class HaversineDistanceCalculator implements Serializable, PointDistanceCalculator, GeoInterface{
 	
 	/**
 	 * Calculate the distance (in meters) between two points 
 	 * on a sphere. Points represented by latitude and 
 	 * longitude on the Earth surface.
 	 */
-	public static double getDistance(Point p1, Point p2){
+	@Override
+	public double getDistance(Point p1, Point p2){
 		return haversineDistance(p1.x, p1.y, p2.x, p2.y, EARTH_RADIUS);
 	}
 	
 	/**
+	 * Calculate the distance (in meters) between two points 
+	 * on a sphere. Points represented by latitude and 
+	 * longitude on the Earth surface.
+	 */
+	@Override
+	public double getDistance(double lon1, double lat1, double lon2, double lat2){
+		return haversineDistance(lon1, lat1, lon2, lat2, EARTH_RADIUS);
+	}
+	
+	/**
 	 * Calculate the distance (in meters) between two 
 	 * points on a sphere. Points represented by polar  
 	 * coordinates on a given sphere of radius R.
 	 */
-	public static double getDistance(Point p1, Point p2, double radius){
+	public double getDistance(Point p1, Point p2, double radius){
 		return haversineDistance(p1.x, p1.y, p2.x, p2.y, radius);
 	}
-	
+
+
+	/**
+	 * Calculate the distance (in meters) between two 
+	 * points on a sphere. Points represented by polar  
+	 * coordinates on a given sphere of radius R.
+	 */
+	public double getDistance(double lon1, double lat1, double lon2, double lat2, double radius){
+		return haversineDistance(lon1, lat1, lon2, lat2, radius);
+	}
+
 	/**
 	 * Calculate the distance (in meters) between two 
 	 * coordinates on a sphere from their longitudes 
@@ -64,7 +67,7 @@ public class HaversineDistanceCalculator implements Serializable, GeoInterface{
 	 * @return The Haversine Distance between 
 	 * points A and B.
 	 */
-	private static double haversineDistance(
+	private double haversineDistance(
 			final double lon1, final double lat1,
 			final double lon2, final double lat2,
 			final double radius){

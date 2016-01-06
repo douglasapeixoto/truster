@@ -5,27 +5,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 import uq.spatial.Point;
+import uq.spatial.Trajectory;
 
 /**
 * Euclidean distance for multidimensional time series. 
 *
-* @author uqdalves, uqhsu1 
+* @author uqhsu1, uqdalves
 */
 @SuppressWarnings("serial")
-class EuclideanTimeSeriesDistanceCalculator implements Serializable, DistanceInterface {
+public class EuclideanTimeSeriesDistanceCalculator implements Serializable, TrajectoryDistanceCalculator {
 
-	/**
-	 * Euclidean distance for multidimensional time series.
-	 */
-	public double getDistance(ArrayList<Point> r, ArrayList<Point> s){
-		double dist = getEDC(r, s); 
+	@Override
+	public double getDistance(Trajectory t1, Trajectory t2){
+		// make sure the original trajectories will not be changed
+		List<Point> r_clone = t1.clone().getPointsList();
+		List<Point> s_clone = t2.clone().getPointsList();
+		
+		// get distance
+		double dist = getEDC(r_clone, s_clone); 
 		if(Double.isNaN(dist)){
 			return INFINITY;
 		}
 		return dist;
 	}
 
-	private double getEDC(ArrayList<Point> r, ArrayList<Point> s)
+	private double getEDC(List<Point> r, List<Point> s)
 	{
 		List<Point> longT = new ArrayList<Point>();
 		List<Point> shortT = new ArrayList<Point>();

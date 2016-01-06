@@ -1,9 +1,10 @@
 package uq.spatial.distance;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.List;
 
-import uq.spatial.Point; 
+import uq.spatial.Point;
+import uq.spatial.Trajectory; 
 
 /**
 * Spatial temporal largest common sub-sequence distance. 
@@ -11,35 +12,38 @@ import uq.spatial.Point;
 * @author uqhsu1, uqdalves 
 */
 @SuppressWarnings("serial")
-class STLCSSDistanceCalculator implements Serializable, DistanceInterface{
+public class STLCSSDistanceCalculator implements Serializable, TrajectoryDistanceCalculator{
 
     double Distance;
 	double Time;
     long startTime1;
     long startTime2;
-        
-	public STLCSSDistanceCalculator(double distanceThreshold, long timeIntervalThreshold){
-		Distance = distanceThreshold;
-        Time = timeIntervalThreshold;
-	}
-	
-	/**
-	 * Spatial temporal largest common sub-sequence distance. 
-	 */
-	public double getDistance(ArrayList<Point> r, ArrayList<Point> s){
+    
+	@Override
+	public double getDistance(Trajectory t1, Trajectory t2) {
+		// make sure the original trajectories will not be changed
+		List<Point> r_clone = t1.clone().getPointsList();
+		List<Point> s_clone = t2.clone().getPointsList();
+		
 		// Time range (parameters - given)
-		//Time = getTimeEnd(r, s); ?????
-		startTime1 = r.get(0).time;
-        startTime2 = s.get(0).time;
+		// Time = getTimeEnd(r, s); ?????
+		startTime1 = r_clone.get(0).time;
+        startTime2 = s_clone.get(0).time;
 
-		double dist = getSTLCSS(r, s);
+        // get distance
+		double dist = getSTLCSS(r_clone, s_clone);
 		if(Double.isNaN(dist)){
 			return INFINITY;
 		}
 		return dist;
+	} 
+	
+	public STLCSSDistanceCalculator(double distanceThreshold, long timeIntervalThreshold){
+		Distance = distanceThreshold;
+        Time = timeIntervalThreshold;
 	}
 
-	private double getSTLCSS(ArrayList<Point> r, ArrayList<Point> s){
+	private double getSTLCSS(List<Point> r, List<Point> s){
 
 		double[][] LCSSMetric = new double[r.size() + 1][s.size() + 1];
 		

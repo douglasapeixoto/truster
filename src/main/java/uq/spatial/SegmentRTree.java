@@ -18,8 +18,8 @@ import net.sf.jsi.rtree.RTree;
 @SuppressWarnings("serial")
 public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 	// the list of trajectories in this tree
-	private List<Segment> segmentList = 
-			new ArrayList<Segment>();
+	private List<STSegment> segmentList = 
+			new ArrayList<STSegment>();
 	// null dimension
 	private static final float NULL_DIM = 1;
 	
@@ -41,7 +41,7 @@ public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 	/**
 	 * Add a segment to this tree. 
 	 */
-	public void add(Segment s){
+	public void add(STSegment s){
 		// add the time-stamp of this segment to the RTree
 		// add as a rectangle of base=time-stamp and height=NULL_DIM
 		Rectangle r = new Rectangle(s.t1, NULL_DIM, s.t2, NULL_DIM);
@@ -52,8 +52,8 @@ public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 	/**
 	 * Add a list of segments to this tree. 
 	 */
-	public void addAll(List<Segment> sList){
-		for(Segment s : sList){
+	public void addAll(List<STSegment> sList){
+		for(STSegment s : sList){
 			this.add(s);
 		}
 	}
@@ -62,9 +62,9 @@ public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 	 * Given a time interval, return the segments in this
 	 * tree whose time stamp overlap with the given time interval.
 	 */
-	public List<Segment> getSegmentsByTime(final long t1, final long t2){
-		final List<Segment> sList = 
-				new ArrayList<Segment>();
+	public List<STSegment> getSegmentsByTime(final long t1, final long t2){
+		final List<STSegment> sList = 
+				new ArrayList<STSegment>();
 		if(isEmpty()){
 			return sList;
 		}
@@ -81,7 +81,7 @@ public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 	/**
 	 * Return a list with all segments in this tree.
 	 */
-	public List<Segment> getSegmentsList() {
+	public List<STSegment> getSegmentsList() {
 		return segmentList;
 	}
 	
@@ -98,7 +98,7 @@ public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 	 * @return Return this merged tree.
 	 */
 	public SegmentRTree merge(SegmentRTree tree){
-		for(Segment s : tree.segmentList){
+		for(STSegment s : tree.segmentList){
 			this.add(s);
 		}
 		return this;

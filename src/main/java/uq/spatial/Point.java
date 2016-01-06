@@ -8,6 +8,7 @@ import java.io.Serializable;
 import org.apache.hadoop.io.Writable;
 
 import uq.spatial.distance.EuclideanDistanceCalculator;
+import uq.spatial.distance.PointDistanceCalculator;
 
 /**
  * Implements a simple 2D point entity.
@@ -39,8 +40,9 @@ public class Point implements Serializable, Cloneable, Writable {
 	 * and a given point p.
 	 */
 	public double dist(Point p){
-		return EuclideanDistanceCalculator
-				.getDistance(p.x, p.y,this.x, this.y);
+		PointDistanceCalculator dist = 
+				new EuclideanDistanceCalculator();
+		return dist.getDistance(p.x, p.y, this.x, this.y);
 	}
 	
 	/**
@@ -50,8 +52,9 @@ public class Point implements Serializable, Cloneable, Writable {
 	 * Point given by x and y coordinates.
 	 */
 	public double dist(double x, double y){
-		return EuclideanDistanceCalculator
-				.getDistance(x, y, this.x, this.y);
+		PointDistanceCalculator dist = 
+				new EuclideanDistanceCalculator();
+		return dist.getDistance(x, y, this.x, this.y);
 	}
 	
 	/**

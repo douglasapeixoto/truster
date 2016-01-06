@@ -1,8 +1,10 @@
 package uq.spatial.distance;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.List;
+
 import uq.spatial.Point;
+import uq.spatial.Trajectory;
 
 /**
 * EDwP: Edit Distance with Projections 
@@ -10,10 +12,16 @@ import uq.spatial.Point;
 * @author uqdalves
 */
 @SuppressWarnings("serial")
-class EDwPDistanceCalculator implements Serializable, DistanceInterface {
+public class EDwPDistanceCalculator implements Serializable, TrajectoryDistanceCalculator {
 
-	public double getDistance(ArrayList<Point> r, ArrayList<Point> s) {
-		double dist = getEDwP(r, s);
+	@Override
+	public double getDistance(Trajectory t1, Trajectory t2) {
+		// make sure the original trajectories will not be changed
+		List<Point> r_clone = t1.clone().getPointsList();
+		List<Point> s_clone = t2.clone().getPointsList();
+		
+		// get distance
+		double dist = getEDwP(r_clone, s_clone);
 		if(Double.isNaN(dist)){
 			return INFINITY;
 		}
@@ -23,7 +31,7 @@ class EDwPDistanceCalculator implements Serializable, DistanceInterface {
 	/**
 	 * Edit Distance with Projections
 	 */
-	private static double getEDwP(ArrayList<Point> r, ArrayList<Point> s) {
+	private static double getEDwP(List<Point> r, List<Point> s) {
 		double total_cost_edwp = 0;
 		
 		if(length(r) == 0 && length(s) == 0){
@@ -139,7 +147,7 @@ class EDwPDistanceCalculator implements Serializable, DistanceInterface {
 	 * Returns a sub-trajectory containing all segments of 
 	 * the list except the first one.
 	 */
-	private static ArrayList<Point> rest(ArrayList<Point> list){
+	private static List<Point> rest(List<Point> list){
 		if(!list.isEmpty()){
 			list.remove(0);
 		}
@@ -149,7 +157,7 @@ class EDwPDistanceCalculator implements Serializable, DistanceInterface {
 	/**
 	 * The length of the trajectory (sum of the segments length)
 	 */
-	private static double length(ArrayList<Point> list){
+	private static double length(List<Point> list){
 		double length = 0;
 		
 		for(int i=0; i<list.size()-1; i++){
@@ -207,7 +215,6 @@ class EDwPDistanceCalculator implements Serializable, DistanceInterface {
 	public String toString() {
 		return "EDwP";
 	}
-
 }
 
 

@@ -14,6 +14,7 @@ import uq.spark.EnvironmentVariables;
 import uq.spatial.Grid;
 import uq.spatial.Point;
 import uq.spatial.Rectangle;
+import uq.spatial.STSegment;
 import uq.spatial.Segment;
 import uq.spatial.Trajectory;
 
@@ -43,19 +44,19 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 	public JavaPairRDD<Integer, Partition> partition(JavaRDD<Trajectory> trajectoryRDD, final Grid grid){
 		/**
 		 * MAP:
-		 * Slit each trajectory into segments and map each segment to its
+		 * Split each trajectory into segments and map each segment to its
 		 * overlapping partition (rectangle). If the segment overlaps more than 
 		 * one partition, we split the segment accordingly.
 		 */
-		 JavaPairRDD<Integer, Segment> mapResultRDD = 
-				 trajectoryRDD.flatMapToPair(new PairFlatMapFunction<Trajectory, Integer, Segment>() {
-			public Iterable<Tuple2<Integer, Segment>> call(Trajectory trajectory) throws Exception {
+		 JavaPairRDD<Integer, STSegment> mapResultRDD = 
+				 trajectoryRDD.flatMapToPair(new PairFlatMapFunction<Trajectory, Integer, STSegment>() {
+			public Iterable<Tuple2<Integer, STSegment>> call(Trajectory trajectory) throws Exception {
 				// the map list to return 
-				List<Tuple2<Integer, Segment>> mapList = 
-						new ArrayList<Tuple2<Integer, Segment>>();
+				List<Tuple2<Integer, STSegment>> mapList = 
+						new ArrayList<Tuple2<Integer, STSegment>>();
 				// read trajectory segments
 				for(int i=0; i<trajectory.size()-1; i++){
-					Segment s = new Segment(trajectory.get(i), trajectory.get(i+1));
+					STSegment s = new STSegment(trajectory.get(i), trajectory.get(i+1));
 					s.id = i;
 					// check for overlapping partitions (grid rectangles)
 					for(int j=0; j<grid.size(); j++){
@@ -63,7 +64,7 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 						// segment is totally covered by this grid rectangle
 						if(r.contains(s.x1, s.y1, s.x2, s.y2)){
 							// add key/value pair
-							mapList.add(new Tuple2<Integer, Segment>(j, s));
+							mapList.add(new Tuple2<Integer, STSegment>(j, s));
 							break;
 						}
 						// check for boundary intersections
@@ -74,14 +75,14 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 							Point pInt = getIntersection(s, rEdge);
 							// get time-stamp of p by interpolation
 							long t = getTimeStamp(s, pInt.x, pInt.y);
-							Segment boundarySeg;
+							STSegment boundarySeg;
 							if(r.contains(s.x1, s.y1)){
-								boundarySeg = new Segment(s.x1, s.y1, s.t1, pInt.x, pInt.y, t);
+								boundarySeg = new STSegment(s.x1, s.y1, s.t1, pInt.x, pInt.y, t);
 							}
 							else{
-								boundarySeg = new Segment(pInt.x, pInt.y, t, s.x2, s.y2, s.t2);
+								boundarySeg = new STSegment(pInt.x, pInt.y, t, s.x2, s.y2, s.t2);
 							}
-							mapList.add(new Tuple2<Integer, Segment>(j, boundarySeg));
+							mapList.add(new Tuple2<Integer, STSegment>(j, boundarySeg));
 						}
 					}
 				}
@@ -95,9 +96,9 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 		 * Groups (aggregate) segments with same key (partition id) into the same partition.
 		 */
 		 Partition emptyPartition = new Partition(); // zero value
-		 Function2<Partition, Segment, Partition> seqFunc = 
-				 new Function2<Partition, Segment, Partition>() {
-			public Partition call(Partition partition, Segment s) throws Exception {
+		 Function2<Partition, STSegment, Partition> seqFunc = 
+				 new Function2<Partition, STSegment, Partition>() {
+			public Partition call(Partition partition, STSegment s) throws Exception {
 				partition.add(s);
 				return partition;
 			}
@@ -118,7 +119,7 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 	/**
 	 * Calculate the intersection point between the given line segments.
 	 */
-	private static Point getIntersection(Segment s1, Segment s2){
+	private Point getIntersection(Segment s1, Segment s2){
 		double x1 = s1.x2 - s1.x1;
 		double x2 = s2.x2 - s2.x1;
 		double y1 = s1.y2 - s1.y1;
@@ -140,7 +141,7 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 	 * Calculate the time-stamp of the coordinate (x,y) in
 	 * the segment s by interpolation of s end points.
 	 */
-	private static long getTimeStamp(Segment s, double x, double y){
+	private long getTimeStamp(STSegment s, double x, double y){
 		// delta time
 		long dt = s.t2 - s.t1;
 		// square length from p1 to p2

@@ -2,34 +2,25 @@ package uq.spatial.distance;
 
 import java.io.Serializable;
 
+import uq.spatial.Point;
+
 /**
+ * Eculidean Distance between two points in 2D
+ * 
  * @author uqdalves
  */
 @SuppressWarnings("serial")
-public class EuclideanDistanceCalculator implements Serializable{
-	
-	/**
-	 * Euclidean distance between two points in 3D, 
-	 * given by x,y,z coordinates.
-	 */
-	public static double getDistance(
-			double x1, double y1, double z1, 
-			double x2, double y2, double z2){
-		double dist = (x1-x2)*(x1-x2) + 
-					  (y1-y2)*(y1-y2) + 
-					  (z1-z2)*(z1-z2);
-		return Math.sqrt(dist);
-	}
-	
-	/**
-	 * Euclidean distance between two points in 2D,
-	 * given by x,y coordinates.
-	 */
-	public static double getDistance(
-			double x1, double y1, 
-			double x2, double y2){
+public class EuclideanDistanceCalculator implements Serializable, PointDistanceCalculator {
+
+	@Override
+	public double getDistance(double x1, double y1, double x2, double y2){
 		double dist = (x1-x2)*(x1-x2) + 
 					  (y1-y2)*(y1-y2);
 		return Math.sqrt(dist);
+	}
+
+	@Override
+	public double getDistance(Point p1, Point p2) {
+		return getDistance(p1.x, p1.y, p2.x, p2.y);
 	}
 }
