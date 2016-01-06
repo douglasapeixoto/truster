@@ -5,7 +5,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 
-import uq.fs.FileToObjectRDDService;
+import uq.fs.FileReaderService;
 import uq.spark.EnvironmentVariables;
 import uq.spatial.Grid;
 import uq.spatial.Point;
@@ -70,7 +70,7 @@ public class TrusterApp implements EnvironmentVariables {
 		fileRDD.persist(STORAGE_LEVEL);
 		
 		// convert the input data to a RDD of trajectory objects
-		FileToObjectRDDService rdd = new FileToObjectRDDService();
+		FileReaderService rdd = new FileReaderService();
 		JavaRDD<Trajectory> trajectoryRDD = 
 				rdd.mapRawDataToTrajectoryRDD(fileRDD);
 		trajectoryRDD.persist(STORAGE_LEVEL);
