@@ -18,11 +18,16 @@ public interface EnvironmentVariables {
 	static final String HDFS_PATH =
 			"hdfs://localhost:9000";
 
+	// path to data locally
+	static final String LOCAL_PATH =
+			"file:/home/uqdalves/my-data";
+	
 	// path to the data set folders/files 
 	static final String DATA_PATH = 
-			"/path/to/data/folder1," + 
-			"/path/to/data/folder2," +
-			"/path/to/data/folder3";
+			LOCAL_PATH + "/trajectory-data/split1," + 
+			LOCAL_PATH + "/trajectory-data/split2," +
+			LOCAL_PATH + "/trajectory-data/split3," +
+			LOCAL_PATH + "/trajectory-data/split4";
 	
 	// path to output folder inside HDFS
 	static final String HDFS_OUTPUT = 

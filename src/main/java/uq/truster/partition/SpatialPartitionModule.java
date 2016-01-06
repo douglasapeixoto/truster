@@ -10,7 +10,7 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 
 import scala.Tuple2;
-
+import uq.spark.EnvironmentVariables;
 import uq.spatial.Grid;
 import uq.spatial.Point;
 import uq.spatial.Rectangle;
@@ -27,7 +27,7 @@ import uq.spatial.Trajectory;
  *
  */
 @SuppressWarnings("serial")
-public class SpatialPartitionModule implements Serializable {
+public class SpatialPartitionModule implements Serializable, EnvironmentVariables {
 
 	/**
 	 * MapReduce partitioning.
@@ -110,7 +110,7 @@ public class SpatialPartitionModule implements Serializable {
 		 };
 		 // call aggregate function (reduce)
 		 JavaPairRDD<Integer, Partition> partitionsRDD = 
-				 mapResultRDD.aggregateByKey(emptyPartition, seqFunc, combFunc);
+				 mapResultRDD.aggregateByKey(emptyPartition, NUM_PARTITIONS_DATA, seqFunc, combFunc);
 		 
 		 return partitionsRDD;
 	} 

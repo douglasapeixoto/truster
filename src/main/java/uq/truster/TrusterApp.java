@@ -15,10 +15,10 @@ import uq.truster.partition.SpatialPartitionModule;
  */
 public class TrusterApp implements EnvironmentVariables {
 	// grid/space dimensions
-	private final static double MIN_X = -100.0;
-	private final static double MAX_X = +100.0;
-	private final static double MIN_Y = -100.0;
-	private final static double MAX_Y = +100.0;
+	private final static double MIN_X = 50.0;  // MinX: 52.99205499607079
+	private final static double MIN_Y = -25.0; // MinY: -20.08557496216634
+	private final static double MAX_X = 720.0; // MaxX: 716.4193496072005
+	private final static double MAX_Y = 400.0; // MaxY: 395.5344310979076
 	// number of grid partitions
 	private final static int SIZE_X = 32;
 	private final static int SIZE_Y = 32;
@@ -51,6 +51,8 @@ public class TrusterApp implements EnvironmentVariables {
 	 * Read input dataset and convert to a RDD of trajectories
 	 */
 	public static JavaRDD<Trajectory> readData(){
+		System.out.println("Reading data..");
+		
 		// read raw data to Spark RDD
 		JavaRDD<String> fileRDD = SC.textFile(DATA_PATH);
 		fileRDD.persist(STORAGE_LEVEL);

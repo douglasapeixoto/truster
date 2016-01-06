@@ -26,7 +26,7 @@
              <manifest>
                <addClasspath>true</addClasspath>
                <classpathPrefix>lib/</classpathPrefix>
-               <mainClass>uq.spark.SparkApp</mainClass>
+               <mainClass>uq.truster.TrusterApp</mainClass>
              </manifest>
            </archive>
          </configuration>
@@ -58,7 +58,7 @@
       <configuration>
         <archive>
           <manifest>
-            <mainClass>uq.spark.SparkApp</mainClass>
+            <mainClass>uq.truster.TrusterApp</mainClass>
           </manifest>
         </archive>
         <descriptorRefs>
