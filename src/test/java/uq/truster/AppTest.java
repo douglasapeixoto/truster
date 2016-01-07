@@ -1,6 +1,8 @@
 package uq.truster;
 
+import uq.spatial.Grid;
 import uq.spatial.Point;
+import uq.spatial.Rectangle;
 import uq.spatial.Segment;
 
 /**
@@ -9,11 +11,11 @@ import uq.spatial.Segment;
 public class AppTest {
 	
 	public static void main(String[] args) {
-		Segment s1 = new Segment(0, 0, 4, 4);
-		Segment s2 = new Segment(2, 0, 2, 10);
-		
-		Point p = getIntersection(s1, s2);
-		p.print();
+		Grid grid = new Grid(5, 3, 0, 0, 5, 3);
+		grid.print();
+		System.out.println();
+		Rectangle r = grid.get(2, 1);
+		r.print();
 	}
 
 	/**

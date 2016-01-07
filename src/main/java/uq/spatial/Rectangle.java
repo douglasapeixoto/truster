@@ -206,8 +206,8 @@ public class Rectangle implements Serializable {
 	 */
 	public void print(){
 		System.out.println("Rectangle:");
-		System.out.println("("+minX+", "+maxY+") " + " ("+maxX+", "+maxY+")");
-		System.out.println("("+minX+", "+minY+") " + " ("+maxX+", "+minY+")");
+		System.out.format("(%.2f,%.2f) (%.2f,%.2f)",minX,maxY,maxX,maxY);
+		System.out.format("(%.2f,%.2f) (%.2f,%.2f)",minX,minY,maxX,minY);
 		System.out.println("Area: " + area());
 		System.out.println("Perimeter: " + perimeter());
 	}
