@@ -57,7 +57,7 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 				// read trajectory segments
 				for(int i=0; i<trajectory.size()-1; i++){
 					STSegment s = new STSegment(trajectory.get(i), trajectory.get(i+1));
-					s.id = i;
+					s.parentId = trajectory.id;
 					// check for overlapping partitions (grid rectangles)
 					for(int j=0; j<grid.size(); j++){
 						Rectangle r = grid.get(j);

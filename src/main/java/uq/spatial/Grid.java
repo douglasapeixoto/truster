@@ -9,7 +9,7 @@ import java.util.List;
  * </br>
  * The grid is constructed from bottom to top, 
  * left to right. The first position is position 
- * index 0 (zero).
+ * index 0 (zero)=(0,0).
  * 
  * @author uqdalves
  *
@@ -54,7 +54,7 @@ public class Grid implements Serializable {
 		for(int y=0; y<sizeY; y++){	
 			currentX=minX;
 			for(int x=0; x<sizeX; x++){
-				grid.add(new Rectangle(currentX, currentX+incrX, currentY, currentY+incrY));
+				grid.add(new Rectangle(currentX, currentY, currentX+incrX, currentY+incrY));
 				currentX += incrX;
 			}
 			currentY += incrY;

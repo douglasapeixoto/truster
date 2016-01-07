@@ -4,8 +4,7 @@ import java.io.Serializable;
 import java.util.Comparator;
 
 /**
- * Comparator to sort trajectories and points 
- * by time-stamp.
+ * Comparator to sort objects by time-stamp.
  * 
  * @author uqdalves
  */
@@ -27,20 +26,33 @@ public class TimeComparator<T> implements Serializable, Comparator<T>{
 			Trajectory t2 = (Trajectory)obj2;
 			return compare(t1, t2);
 		}
+		if(obj1 instanceof STSegment){
+			STSegment s1 = (STSegment)obj1;
+			STSegment s2 = (STSegment)obj2;
+			return compare(s1, s2);
+		}
 		return 0;
 	}
 	
 	/**
-	 * Compare points by time stamp by ascending order.
+	 * Compare points by time-stamp in ascending order.
 	 */
 	private int compare(Point p1, Point p2) {
 		return p1.time > p2.time ? 1 : (p1.time < p2.time ? -1 : 0);
 	}
 	
 	/**
-	 * Compare trajectories by initial time stamp by ascending order.
+	 * Compare trajectories by initial time-stamp in ascending order.
 	 */
 	private int compare(Trajectory t1, Trajectory t2) {
 		return t1.timeIni() > t2.timeIni() ? 1 : (t1.timeIni() < t2.timeIni() ? -1 : 0);
 	}
+	
+	/**
+	 * Compare spatial-temporal segments by initial time-stamp in ascending order.
+	 */
+	private int compare(STSegment s1, STSegment s2) {
+		return s1.t1 > s2.t1 ? 1 : (s1.t1 < s2.t1 ? -1 : 0);
+	}
+	
 }

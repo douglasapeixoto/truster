@@ -53,12 +53,20 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 	
 	/**
-	 *  Add a Point to this trajectory (end). 
+	 *  Add a point to this trajectory (end). 
 	 */
 	public void addPoint(Point point){
 		pointsList.add(point);
 	}
 
+	/**
+	 *  Add a segment to this trajectory (end). 
+	 */
+	public void addSegment(STSegment s){
+		pointsList.add(new Point(s.x1, s.y1, s.t1));
+		pointsList.add(new Point(s.x2, s.y2, s.t2));
+	}
+	
 	/**
 	 *  Add a Point List to this trajectory (end). 
 	 */

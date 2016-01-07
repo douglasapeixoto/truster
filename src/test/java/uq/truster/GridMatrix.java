@@ -52,7 +52,7 @@ public class GridMatrix implements Serializable {
 		for(int x=0; x<sizeX; x++){	
 			currentY=minY;
 			for(int y=0; y<sizeY; y++){
-				grid[x][y] = new Rectangle(currentX, currentX+incrX, currentY, currentY+incrY);
+				grid[x][y] = new Rectangle(currentX, currentY, currentX+incrX, currentY+incrY);
 				currentY += incrY;
 			}
 			currentX += incrX;

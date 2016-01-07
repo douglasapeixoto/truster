@@ -3,7 +3,7 @@ package uq.spatial;
 import java.io.Serializable;
 
 /**
- * A Spatial-Temporal line segment object with time stamp.
+ * A 2D Spatial-Temporal line segment object with time-stamp.
  * </br>
  * Line segment from points (x1,y1,t1) to (x2,y2,t2).
  * 
@@ -12,6 +12,10 @@ import java.io.Serializable;
  */
 @SuppressWarnings("serial")
 public class STSegment extends Segment implements Serializable{
+	/**
+	 * The parent (trajectory) of this segment
+	 */
+	public String parentId;
 	// end points time-stamp
 	public long t1;
 	public long t2;

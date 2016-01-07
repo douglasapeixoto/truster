@@ -1,17 +1,18 @@
 package uq.truster;
 
+import java.util.List;
+
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.Function2;
 
 import uq.fs.FileReaderService;
 import uq.spark.EnvironmentVariables;
 import uq.spatial.Grid;
-import uq.spatial.Point;
+import uq.spatial.STRectangle;
 import uq.spatial.Trajectory;
 import uq.truster.partition.Partition;
 import uq.truster.partition.SpatialPartitionModule;
+import uq.truster.query.QueryProcessingModule;
 
 /**
  * Truster main app class
@@ -56,7 +57,13 @@ public class TrusterApp implements EnvironmentVariables {
 		/*****
 		 * PROCESS QUERIES - TRUSTER QUERY PROCESSING MODULE 
 		 *****/
-		// TODO: process queries using the partitionRDD
+		QueryProcessingModule queryMod = 
+				new QueryProcessingModule(partitionsRDD, grid);
+		// query object
+		STRectangle query = new STRectangle(0, 0, 100, 100, 0, 1000);
+		// query result
+		List<Trajectory> tListResult = 
+				queryMod.processQuery(query);
 	}
 	
 	/**

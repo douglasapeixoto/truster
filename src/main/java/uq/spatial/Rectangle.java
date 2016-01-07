@@ -14,18 +14,18 @@ import java.util.List;
 public class Rectangle implements Serializable {
 	// X and Y axis position
 	public double minX;
-	public double maxX;
 	public double minY;
+	public double maxX;
 	public double maxY;
 	
 	public Rectangle(){}
-	public Rectangle(double minX, double maxX, double minY, double maxY) {
+	public Rectangle(double minX, double minY, double maxX, double maxY) {
 		this.minX = minX;
-		this.maxX = maxX;
 		this.minY = minY;
+		this.maxX = maxX;
 		this.maxY = maxY;
 	}
-	
+
 	/**
 	 * The perimeter of this rectangle
 	 */
@@ -78,7 +78,7 @@ public class Rectangle implements Serializable {
 	 */
 	public boolean contains(double x1, double y1, double x2, double y2){
 		if(contains(x1, y1) && contains(x2, y2)){
-				return true;
+			return true;
 		}
 		return false;
 	}	
@@ -133,57 +133,27 @@ public class Rectangle implements Serializable {
 	 */
 	public Segment intersect(double x1, double y1, double x2, double y2){
 		// check box LEFT edge
-		if(intersect(x1, y1, x2, y2, 
-				minX, minY, minX, maxY)){
-			return new Segment(minX, minY, minX, maxY);
+		Segment egde = new Segment(minX, minY, minX, maxY);
+		if(egde.intersect(x1, y1, x2, y2)){
+			return egde;
 		}
 		// check RIGHT edge
-		if(intersect(x1, y1, x2, y2, 
-				maxX, minY, maxX, maxY)){
-			return new Segment(maxX, minY, maxX, maxY);
+		egde = new Segment(maxX, minY, maxX, maxY);
+		if(egde.intersect(x1, y1, x2, y2)){
+			return egde;
 		}
 		// check TOP edge
-		if(intersect(x1, y1, x2, y2, 
-				minX, maxY, maxX, maxY)){
-			return new Segment(minX, maxY, maxX, maxY);
+		egde = new Segment(minX, maxY, maxX, maxY);
+		if(egde.intersect(x1, y1, x2, y2)){
+			return egde;
 		}
 		// check BOTTOM edge
-		if(intersect(x1, y1, x2, y2, 
-				minX, minY, maxX, minY)){
-			return new Segment(minX, minY, maxX, minY);
+		egde = new Segment(minX, minY, maxX, minY);
+		if(egde.intersect(x1, y1, x2, y2)){
+			return egde;
 		}
 		// no intersection
 	    return null;
-	}
-	
-	/**
-	 * True if these two line segments R and S intersect.
-	 * Line segments given by end points X and Y coordinates.
-	 */
-	private boolean intersect(double r_x1, double r_y1, double r_x2, double r_y2,
-							  double s_x1, double s_y1, double s_x2, double s_y2){
-		// vectors r and s
-		double rx = r_x2 - r_x1;
-		double ry = r_y2 - r_y1;		
-		double sx = s_x2 - s_x1;
-		double sy = s_y2 - s_y1;
-		
-		// cross product r x s
-		double cross = (rx*sy) - (ry*sx);
-			
-		// they are parallel or colinear
-		if(cross == 0.0) return false;
-	
-		double t = (s_x1 - r_x1)*sy - (s_y1 - r_y1)*sx;
-			   t = t / cross;
-		double u = (s_x1 - r_x1)*ry - (s_y1 - r_y1)*rx;
-			   u = u / cross;
-
-	    if(t > 0.0 && t < 1.0 && 
-	       u > 0.0 && u < 1.0){
-	    	return true;
-	    }
-	    return false;
 	}
 
 	/**
