@@ -50,16 +50,17 @@ public class Rectangle implements Serializable {
 	}
 
 	/**
-	 * True is this rectangle contains the given point inside its perimeter.
-	 * Check if the point lies inside the rectangle area.
+	 * Check is this rectangle contains the given point inside its perimeter.
+	 * Check if the point lies totally inside the rectangle area.
 	 */
 	public boolean contains(Point p){
 		return contains(p.x, p.y);
 	}
 	
 	/**
-	 * True is this rectangle contains the given point inside its perimeter.
-	 * Check if the point lies inside the rectangle area.
+	 * Check is this rectangle contains the given point inside its perimeter.
+	 * Check if the point lies totally inside the rectangle area.
+	 * </br>
 	 * Point given by X and Y coordinates
 	 */
 	public boolean contains(double x, double y){
@@ -71,47 +72,57 @@ public class Rectangle implements Serializable {
 	}
 
 	/**
-	 * True is this rectangle contains the given line segment,
-	 * that is, line segment totally inside the rectangle area.
+	 * Check is this rectangle contains the given line segment,
+	 * that is, line segment is inside the rectangle area.
+	 */
+	public boolean contains(Segment s){
+		return contains(s.x1, s.y1, s.x2, s.y2);
+	}
+	
+	/**
+	 * Check is this rectangle contains the given line segment,
+	 * that is, line segment is inside the rectangle area.
 	 * </br>
 	 * Line segment given by end points X and Y coordinates.
 	 */
 	public boolean contains(double x1, double y1, double x2, double y2){
-		if(contains(x1, y1) && contains(x2, y2)){
+		if((contains(x1, y1) || touch(x1, y1)) && 
+		   (contains(x2, y2) || touch(x2, y2))){
 			return true;
 		}
 		return false;
 	}	
 	
 	/**
-	 * True is this rectangle touches the specified point.
-	 * Check if the point touches the rectangle edges.
+	 * Check is the specified point touches 
+	 * any of the rectangle edges.
 	 */
 	public boolean touch(Point p){
 		return touch(p.x, p.y);
 	}
 	
 	/**
-	 * True is this rectangle touches the specified point.
-	 * Check if the point touches the rectangle edges.
+	 * Check is the specified point touches 
+	 * any of the rectangle edges.
+	 * </br>
 	 * Point given by X and Y coordinates.
 	 */
 	public boolean touch(double x, double y){
 		// check top and bottom edges
-		if( x >= minX && x <= maxX && 
-		   (y == maxY || y == minY) ){
+		if((y == maxY || y == minY) &&
+		    x >= minX && x <= maxX){
 			return true;
 		}
 		// check left and right edges
-		if( y >= minY && y <= maxY && 
-		   (x == minX || x == maxX) ){
+		if((x == minX || x == maxX) &&
+			y >= minY && y <= maxY){
 			return true;
 		}
 		return false;
 	}
 
 	/**
-	 * True is these two rectangles overlap.
+	 * Check is these two rectangles overlap.
 	 */
 	public boolean overlap(Rectangle r){
 		if(this.maxX < r.minX) return false;
@@ -122,11 +133,46 @@ public class Rectangle implements Serializable {
 	}
 	
 	/**
+	 * Check if the given line segment overlaps with this rectangle, 
+	 * that is, check if this rectangle either contains or intersect 
+	 * the given line segment.
+	 */
+	public boolean overlap(Segment s){
+		if(contains(s) || intersect(s)!=null){
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Check if the given line segment overlaps with this rectangle, 
+	 * that is, check if this rectangle either contains or intersect
+	 * the given line segment.
+	 * </br>
+	 * Line segment given by endpoint coordinates.
+	 */
+	public boolean overlap(double x1, double y1, double x2, double y2){
+		if(contains(x1, y1, x2, y2) || 
+		   intersect(x1, y1, x2, y2)!=null){
+			return true;
+		}
+		return false;
+	}
+	
+	/**
 	 * Check if the given line segment intersects this rectangle.
+	 * 
+	 * @return Return the rectangle edge which intersect with the
+	 * given line segment. If they do not intersect then return null.
+	 */
+	public Segment intersect(Segment s){
+		return intersect(s.x1, s.y1, s.x2, s.y2);
+	}
+
+	/**
+	 * Check if the given line segment intersects this rectangle.
+	 * </br>
 	 * Line segment is given by end point coordinates.
-	 * </br></br>
-	 * If the line segment do not cross or only touches the
-	 * rectangle edges or vertexes then return null.
 	 * 
 	 * @return Return the rectangle edge which intersect with the
 	 * given line segment. If they do not intersect then return null.
@@ -176,8 +222,10 @@ public class Rectangle implements Serializable {
 	 */
 	public void print(){
 		System.out.println("Rectangle:");
-		System.out.format("(%.2f,%.2f) (%.2f,%.2f)",minX,maxY,maxX,maxY);
-		System.out.format("(%.2f,%.2f) (%.2f,%.2f)",minX,minY,maxX,minY);
+		System.out.format("[(%.2f,%.2f) (%.2f,%.2f)]",minX,maxY,maxX,maxY);
+		System.out.println();
+		System.out.format("[(%.2f,%.2f) (%.2f,%.2f)]",minX,minY,maxX,minY);
+		System.out.println();
 		System.out.println("Area: " + area());
 		System.out.println("Perimeter: " + perimeter());
 	}

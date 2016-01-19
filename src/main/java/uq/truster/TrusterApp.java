@@ -7,11 +7,13 @@ import org.apache.spark.api.java.JavaRDD;
 
 import uq.fs.FileReaderService;
 import uq.spark.EnvironmentVariables;
+import uq.spatial.GeoInterface;
 import uq.spatial.Grid;
 import uq.spatial.STRectangle;
 import uq.spatial.Trajectory;
 import uq.truster.partition.Partition;
 import uq.truster.partition.SpatialPartitionModule;
+import uq.truster.partition.TrajectoryTrackTable;
 import uq.truster.query.QueryProcessingModule;
 
 /**
@@ -20,18 +22,10 @@ import uq.truster.query.QueryProcessingModule;
  * @author uqdalves
  *
  */
-public class TrusterApp implements EnvironmentVariables {
-	// grid/space dimensions
-	private final static double MIN_X = 50.0;  // MinX: 52.99205499607079
-	private final static double MIN_Y = -25.0; // MinY: -20.08557496216634
-	private final static double MAX_X = 720.0; // MaxX: 716.4193496072005
-	private final static double MAX_Y = 400.0; // MaxY: 395.5344310979076
-	// number of grid partitions
-	private final static int SIZE_X = 32;
-	private final static int SIZE_Y = 32;
-	
+public class TrusterApp implements EnvironmentVariables, GeoInterface {
+
 	/**
-	 * Spark main access
+	 * Truster main access
 	 */
 	public static void main(String[] arg){
 		/*****
@@ -50,6 +44,7 @@ public class TrusterApp implements EnvironmentVariables {
 		SpatialPartitionModule partitionMod = new SpatialPartitionModule();
 		JavaPairRDD<Integer, Partition> partitionsRDD = 
 				partitionMod.partition(trajectoryRDD, grid);
+		TrajectoryTrackTable trackTable = partitionMod.getTTT();
 		
 		// force action to build partitions
 		System.out.println("Num. Partitions: " + partitionsRDD.count());
@@ -58,12 +53,13 @@ public class TrusterApp implements EnvironmentVariables {
 		 * PROCESS QUERIES - TRUSTER QUERY PROCESSING MODULE 
 		 *****/
 		QueryProcessingModule queryMod = 
-				new QueryProcessingModule(partitionsRDD, grid);
+				new QueryProcessingModule(partitionsRDD, trackTable, grid);
 		// query object
 		STRectangle query = new STRectangle(0, 0, 100, 100, 0, 1000);
 		// query result
 		List<Trajectory> tListResult = 
-				queryMod.processQuery(query);
+				queryMod.processSelectionQuery(query);
+		System.out.println("Total trajectories returned: " + tListResult.size());
 	}
 	
 	/**

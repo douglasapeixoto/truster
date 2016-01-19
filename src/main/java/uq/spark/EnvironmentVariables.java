@@ -47,4 +47,11 @@ public interface EnvironmentVariables {
 	// RDD storage level
 	static final StorageLevel STORAGE_LEVEL= 
 			StorageLevel.DISK_ONLY();
+	
+	// an infinity value
+	static final double INF = Double.MAX_VALUE;
+
+	// number of grid partitions
+	final static int SIZE_X = 32;
+	final static int SIZE_Y = 32;
 }

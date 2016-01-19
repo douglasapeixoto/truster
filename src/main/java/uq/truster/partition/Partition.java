@@ -1,6 +1,7 @@
 package uq.truster.partition;
 
 import java.io.Serializable;
+import java.util.HashSet;
 import java.util.List;
 
 import uq.spatial.STSegment;
@@ -24,10 +25,17 @@ public class Partition implements Serializable {
 			new SegmentRTree();
 	
 	/**
+	 * The parent trajectory of the segments in this partition.
+	 */
+	private HashSet<String> parentIdSet = 
+			new HashSet<String>();
+	
+	/**
 	 * Add a segment to this partition.
 	 */
 	public void add(STSegment s){
 		segmentTree.add(s);
+		parentIdSet.add(s.parentId);
 	}
 	
 	/**
@@ -35,6 +43,17 @@ public class Partition implements Serializable {
 	 */
 	public List<STSegment> getSegmentsList(){
 		return segmentTree.getSegmentsList();
+	}
+	
+	/**
+	 * Return the set of trajectories that overlaps with this partition.
+	 * </br>
+	 * The parent trajectories of the segments in this partition.
+	 * 
+	 * @return Return trajectories ID.
+	 */
+	public HashSet<String> getTrajectoryIdSet(){
+		return parentIdSet;
 	}
 	
 	/**
@@ -51,6 +70,7 @@ public class Partition implements Serializable {
 	 */
 	public Partition merge(Partition partition){
 		segmentTree.addAll(partition.getSegmentsList());
+		parentIdSet.addAll(partition.getTrajectoryIdSet());
 		return this;
 	}
 	

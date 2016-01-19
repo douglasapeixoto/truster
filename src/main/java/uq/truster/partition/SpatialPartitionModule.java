@@ -29,7 +29,11 @@ import uq.spatial.Trajectory;
  */
 @SuppressWarnings("serial")
 public class SpatialPartitionModule implements Serializable, EnvironmentVariables {
-
+	/**
+	 * Keep track of trajectory segments across the grid.
+	 */
+	private TrajectoryTrackTable trackTable = null;
+	
 	/**
 	 * MapReduce partitioning.
 	 * </br>
@@ -89,9 +93,15 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 				return mapList;
 			}
 		});
+		 
+		/**
+		 * TTT CONSTRUCTION
+		 */
+		trackTable = new TrajectoryTrackTable();
+		trackTable.build(mapResultRDD);
 		
 		/**
-		 * REDUCE:
+		 * REDUCE [PARTITION]:
 		 * Using Aggregate by key as reduce function.
 		 * Groups (aggregate) segments with same key (partition id) into the same partition.
 		 */
@@ -115,6 +125,13 @@ public class SpatialPartitionModule implements Serializable, EnvironmentVariable
 		 
 		 return partitionsRDD;
 	} 
+	
+	/**
+	 * Return the trajectory track table built during the partitioning phase.
+	 */
+	public TrajectoryTrackTable getTTT(){
+		return trackTable;
+	}
 	
 	/**
 	 * Calculate the intersection point between the given line segments.

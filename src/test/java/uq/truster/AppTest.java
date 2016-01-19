@@ -1,5 +1,7 @@
 package uq.truster;
 
+import java.util.List;
+
 import uq.spatial.Grid;
 import uq.spatial.Point;
 import uq.spatial.Rectangle;
@@ -14,8 +16,16 @@ public class AppTest {
 		Grid grid = new Grid(5, 3, 0, 0, 5, 3);
 		grid.print();
 		System.out.println();
-		Rectangle r = grid.get(2, 1);
-		r.print();
+		
+		Rectangle r8 = grid.get(8);
+		r8.print();
+		
+		List<Integer> posList = 
+				grid.getAdjacentRectangles(0, 1);
+		System.out.println();
+		for(Integer i : posList){
+			System.out.println(i);
+		}
 	}
 
 	/**

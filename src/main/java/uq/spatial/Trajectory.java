@@ -18,7 +18,7 @@ import org.apache.hadoop.io.Writable;
  */
 @SuppressWarnings("serial")
 public class Trajectory implements Serializable, Cloneable, Writable, GeoInterface {
-	// the list of Points that composes the trajectory
+	// the list of Points that composes this trajectory
 	private List<Point> pointsList = 
 			new ArrayList<Point>();
 	
@@ -35,7 +35,8 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	/**
 	 * Comparator to sort trajectory points by time-stamp.
 	 */
-	private Comparator<Point> timeComparator = new TimeComparator<Point>(); 
+	private Comparator<Point> timeComparator = 
+			new TimeComparator<Point>(); 
 	
 	/**
 	 * Sort this trajectory's sample points by time-stamp
@@ -53,14 +54,14 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 	
 	/**
-	 *  Add a point to this trajectory (end). 
+	 * Add a point to this trajectory (end). 
 	 */
 	public void addPoint(Point point){
 		pointsList.add(point);
 	}
 
 	/**
-	 *  Add a segment to this trajectory (end). 
+	 * Add a segment to this trajectory (end). 
 	 */
 	public void addSegment(STSegment s){
 		pointsList.add(new Point(s.x1, s.y1, s.t1));
@@ -95,8 +96,8 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 	
 	/**
-	 * Merges two trajectories.
-	 * Appends a trajectory t to the end of this trajectory.
+	 * Merge two trajectories.
+	 * Appends the trajectory t to the end of this trajectory.
 	 */
 	public void merge(Trajectory t){
 		pointsList.addAll(t.getPointsList());
@@ -133,7 +134,7 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	 */
 	public long timeIni(){
 		if(!pointsList.isEmpty()){
-			return head().time;
+			return first().time;
 		}
 		return 0;
 	}
@@ -144,7 +145,7 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	 */
 	public long timeEnd(){
 		if(!pointsList.isEmpty()){
-			return tail().time;
+			return last().time;
 		}
 		return 0;
 	}
@@ -206,9 +207,9 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 	
 	/**
-	 * The 'head' of this trajectory: First sample point.
+	 * The first sample point of this trajectory.
 	 */
-	public Point head(){
+	public Point first(){
 		if(!this.isEmpty()){
 			return pointsList.get(0);
 		}
@@ -216,9 +217,9 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 	
 	/**
-	 * The 'tail' of this trajectory: Last sample point.
+	 * The last sample point of this trajectory.
 	 */
-	public Point tail(){
+	public Point last(){
 		if(!this.isEmpty()){
 			return pointsList.get(pointsList.size()-1);
 		}
@@ -260,13 +261,13 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 
 	/**
-	 * True if these trajectories intersect each other.
-	 * (Euclidean space only)
+	 * True if these trajectories intersect each other
+	 * (Euclidean space only).
 	 * If the trajectories only touch edges or vertexes 
 	 * than also returns false.
 	 */
 	public boolean intersect(Trajectory t){
-		if(isEmpty() || t.isEmpty()){
+		if(this.isEmpty() || t.isEmpty()){
 			return false;
 		}
 		double sx, sy, rx, ry;

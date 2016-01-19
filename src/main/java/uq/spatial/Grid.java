@@ -7,17 +7,17 @@ import java.util.List;
 /**
  * A grid object made of n x m rectangles.
  * </br>
- * The grid is constructed from bottom to top, 
- * left to right. The first position is position 
- * index 0 (zero)=(0,0).
+ * The grid is constructed from left to right, 
+ * bottom to top. The first position in the grid
+ * is the position index 0 (zero)=(0,0).
  * 
  * @author uqdalves
  *
  */
 @SuppressWarnings("serial")
 public class Grid implements Serializable {
-	// grid boxes (rectangles)
-	private List<Rectangle> grid;
+	// grid rectangles
+	private List<Rectangle> gridList;
 	// grid endpoint coordinates
 	public double minX;
 	public double minY;
@@ -37,7 +37,7 @@ public class Grid implements Serializable {
 		this.maxY = maxY;
 		this.sizeX = n;
 		this.sizeY = m;
-		grid = new ArrayList<Rectangle>(sizeX*sizeY);
+		gridList = new ArrayList<Rectangle>(sizeX*sizeY);
 		// build the grid
 		build();
 	}
@@ -54,7 +54,7 @@ public class Grid implements Serializable {
 		for(int y=0; y<sizeY; y++){	
 			currentX=minX;
 			for(int x=0; x<sizeX; x++){
-				grid.add(new Rectangle(currentX, currentY, currentX+incrX, currentY+incrY));
+				gridList.add(new Rectangle(currentX, currentY, currentX+incrX, currentY+incrY));
 				currentX += incrX;
 			}
 			currentY += incrY;
@@ -65,16 +65,16 @@ public class Grid implements Serializable {
 	 * The list of rectangles in this grid.
 	 */
 	public List<Rectangle> getRectangles(){
-		return grid;
+		return gridList;
 	}
 	
 	/**
 	 * Return the i-th rectangle in this grid.
 	 */
-	public Rectangle get(int i) {
+	public Rectangle get(final int i) {
 		assert(i>=0 && i<size())
 		: "Grid index out of bound.";
-		return grid.get(i);
+		return gridList.get(i);
 	}
 	
 	/**
@@ -82,18 +82,18 @@ public class Grid implements Serializable {
 	 * in the grid. Grid x and y position start 
 	 * from (0,0).
 	 */
-	public Rectangle get(int x, int y) {
+	public Rectangle get(final int x, final int y) {
 		assert(x>=0 && x<sizeX && y>=0 && y<sizeY)
 		: "Grid index out of bound.";
 		int index = y*sizeX + x;
-		return grid.get(index);
+		return gridList.get(index);
 	}
 	
 	/**
 	 * Number of rectangles in this grid.
 	 */
 	public int size(){
-		return grid.size();
+		return gridList.size();
 	}
 	
 	/**
@@ -117,12 +117,84 @@ public class Grid implements Serializable {
 	public List<Integer> getOverlappingRectangles(Rectangle r){
 		List<Integer> posList = new ArrayList<Integer>();
 		int i=0;
-		for(Rectangle rec : grid){
+		for(Rectangle rec : gridList){
 			if(rec.overlap(r)){
 				posList.add(i);
 			}
 			i++;
 		}
+		return posList;
+	}
+
+	/**
+	 * Return the positions (index) of the rectangles in this grid that
+	 * overlaps with the given line segment, that is, the id of the
+	 * rectangles that either contains or intersect the line segment
+	 */
+	public List<Integer> getOverlappingRectangles(Segment s) {
+		List<Integer> posList = new ArrayList<Integer>();
+		for(int i=0; i<gridList.size(); i++){
+			Rectangle ri = gridList.get(i);
+			if(ri.overlap(s)){
+				posList.add(i);
+			}
+		}
+		return posList;
+	}
+	
+	/**
+	 * Return the positions (index) of the adjacent rectangles
+	 * from the given grid position. 
+	 */
+	public List<Integer> getAdjacentRectangles(final int x, final int y){
+		assert(x>=0 && x<sizeX && y>=0 && y<sizeY)
+		: "Grid index out of bound.";
+		
+		List<Integer> posList = new ArrayList<Integer>();
+		int adjX, adjY;
+		int index;
+
+		adjX = x-1; adjY = y-1;
+		if(adjX>=0 && adjY>=0){
+			index = adjY*sizeX + adjX;
+			posList.add(index);
+		}
+		adjX = x; adjY = y-1;
+		if(adjY>=0){
+			index = adjY*sizeX + adjX;
+			posList.add(index);
+		}
+		adjX = x+1; adjY = y-1;
+		if(adjX<sizeX && adjY>=0){
+			index = adjY*sizeX + adjX;
+			posList.add(index);
+		}
+		adjX = x-1; adjY = y;
+		if(adjX>=0){
+			index = adjY*sizeX + adjX;
+			posList.add(index);
+		}
+		adjX = x+1; adjY = y;
+		if(adjX<sizeX){
+			index = adjY*sizeX + adjX;
+			posList.add(index);
+		}
+		adjX = x-1; adjY = y+1;
+		if(adjX>=0 && adjY<sizeY){
+			index = adjY*sizeX + adjX;
+			posList.add(index);
+		}
+		adjX = x; adjY = y+1;
+		if(adjY<sizeY){
+			index = adjY*sizeX + adjX;
+			posList.add(index);
+		}
+		adjX = x+1; adjY = y+1;
+		if(adjX<sizeX && adjY<sizeY){
+			index = adjY*sizeX + adjX;
+			posList.add(index);
+		}
+		
 		return posList;
 	}
 	
@@ -134,13 +206,13 @@ public class Grid implements Serializable {
 		for(int y=sizeY-1; y>=0; y--){
 			for(int x=0; x<sizeX; x++){
 				int index = y*sizeX + x;
-				Rectangle r = grid.get(index);
+				Rectangle r = gridList.get(index);
 				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",r.minX,r.maxY,r.maxX,r.maxY);
 			}	
 			System.out.println();
 			for(int x=0; x<sizeX; x++){
 				int index = y*sizeX + x;
-				Rectangle r = grid.get(index);
+				Rectangle r = gridList.get(index);
 				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",r.minX,r.minY,r.maxX,r.minY);
 			}
 			System.out.println("\n");
