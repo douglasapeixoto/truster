@@ -20,7 +20,6 @@ public class HaversineDistanceCalculator implements Serializable, PointDistanceC
 	 * on a sphere. Points represented by latitude and 
 	 * longitude on the Earth surface.
 	 */
-	@Override
 	public double getDistance(Point p1, Point p2){
 		return haversineDistance(p1.x, p1.y, p2.x, p2.y, EARTH_RADIUS);
 	}
@@ -30,7 +29,6 @@ public class HaversineDistanceCalculator implements Serializable, PointDistanceC
 	 * on a sphere. Points represented by latitude and 
 	 * longitude on the Earth surface.
 	 */
-	@Override
 	public double getDistance(double lon1, double lat1, double lon2, double lat2){
 		return haversineDistance(lon1, lat1, lon2, lat2, EARTH_RADIUS);
 	}

@@ -14,7 +14,6 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 
 import scala.Tuple2;
-
 import uq.spatial.STSegment;
 import uq.spatial.Trajectory;
 
@@ -33,120 +32,26 @@ import uq.spatial.Trajectory;
  *
  */
 @SuppressWarnings("serial")
-public class TrajectoryCollector implements Serializable{
-	private JavaPairRDD<Integer, Partition> partitionsRDD; 
-	private TrajectoryTrackTable trackTable;
+public class TrajectoryCollectorSeg implements Serializable{
+	private JavaPairRDD<Integer, PartitionSeg> partitionsRDD; 
+	private TrajectoryTrackTableSeg trackTable;
 
 	/**
 	 * Creates a new collector.
 	 */
-	public TrajectoryCollector(
-			final JavaPairRDD<Integer, Partition> partitionsRDD, 
-			final TrajectoryTrackTable trackTable) {
+	public TrajectoryCollectorSeg(
+			final JavaPairRDD<Integer, PartitionSeg> partitionsRDD, 
+			final TrajectoryTrackTableSeg trackTable) {
 		this.partitionsRDD = partitionsRDD;
 		this.trackTable = trackTable;
 	}
-		
+
 	/**
-	 * Given a set of trajectory IDs, retrieve the given 
-	 * trajectories from the partitions RDD. 
+	 * Given a set of partition indexes, and a time interval, 
+	 * collect from the RDD the trajectories inside the given 
+	 * partitions.
 	 * </br>
-	 * Retrieve whole trajectories.
-	 * </br>
-	 * Post-process segments after collection.
-	 * 
-	 * @return Return a distributed dataset (RDD) of trajectories.
-	 * (Note: the given trajectories must be in the dataset)
-	 */
-	public JavaRDD<Trajectory> collectTrajectoriesById(
-			final Collection<String> trajectoryIdSet){
-
-		// collect all partitions that contain those trajectories
-		final HashSet<Integer> gridIdSet = 
-				trackTable.collectIndexListByTrajectoryId(trajectoryIdSet);
-		
-		// filter pages that contains the specified trajectories
-		JavaRDD<Partition> filteredPartitionsRDD = 
-			partitionsRDD.filter(new Function<Tuple2<Integer,Partition>, Boolean>() {
-				@Override
-				public Boolean call(Tuple2<Integer, Partition> partition) throws Exception {
-					return gridIdSet.contains(partition._1);
-				}
-			}).values();
-
-		// collection log
-		/*System.out.println("Collect Trajectories by Id.");
-		System.out.println("Total Pages: " + pagesRDD.count());
-		System.out.println("Total Pages Filtered: " + filteredPagesRDD.count());
-		// get the number of trajectories that intersect with these pages
-		int totalTrajectories = 
-			filteredPagesRDD.values().flatMap(new FlatMapFunction<Page, String>() {
-				public Iterable<String> call(Page page) throws Exception {
-					return page.getTrajectoryIdSet();
-				}
-			}).distinct().collect().size();
-		System.out.println("Total Trajectories Filtered (TP+FP): " + totalTrajectories);
-		TOTAL_PAGES_FILTERED += filteredPagesRDD.count();
-		TOTAL_TRAJ_FILTERED += totalTrajectories;*/
-
-		// map each partition to a list key value pairs containing 
-		// the desired trajectories segments
-		JavaPairRDD<String, STSegment> segmentsRDD =
-				filteredPartitionsRDD.flatMapToPair(new PairFlatMapFunction<Partition, String, STSegment>() {
-				public Iterable<Tuple2<String, STSegment>> call(Partition partition) throws Exception {
-					// iterable list to return
-					List<Tuple2<String, STSegment>> list = 
-							new LinkedList<Tuple2<String, STSegment>>();
-					for(STSegment s : partition.getSegmentsList()){
-						if(trajectoryIdSet.contains(s.parentId)){
-							list.add(new Tuple2<String, STSegment>(s.parentId, s));
-						}
-					}
-					return list;
-				}
-			});
-		
-		// merge segments by key
-		Trajectory emptyTrajectory = new Trajectory();
-		// aggregate functions
-		Function2<Trajectory, STSegment, Trajectory> seqFunc = new Function2<Trajectory, STSegment, Trajectory>() {
-			@Override
-			public Trajectory call(Trajectory t, STSegment s) throws Exception {
-				t.addSegment(s); t.id = s.parentId;
-				return t;
-			}
-		};
-		Function2<Trajectory, Trajectory, Trajectory> combFunc = 
-				new Function2<Trajectory, Trajectory, Trajectory>() {
-			@Override
-			public Trajectory call(Trajectory t1, Trajectory t2) throws Exception {
-				t1.merge(t2);
-				return t1;
-			}
-		};
-		
-		// aggregate segments by key into a trajectory (unsorted)
-		JavaRDD<Trajectory> trajectoryRDD = 
-				segmentsRDD.aggregateByKey(emptyTrajectory, seqFunc, combFunc).values();
-
-		//post processing
-		trajectoryRDD = postProcess(trajectoryRDD);
-	
-		// collection log
-		/*System.out.println("Total Trajectories Collected (TP): " + trajectoryRDD.count());
-		TOTAL_TRAJ_COLLECTED += trajectoryRDD.count();
-		System.out.println("TOTAIS: ");
-		System.out.println("TOTAL PAGES FILT.: " + TOTAL_PAGES_FILTERED);
-		System.out.println("TOTAL TRAJ FILT.:  " + TOTAL_TRAJ_FILTERED);
-		System.out.println("TOTAL TRAJ COL.:   " + TOTAL_TRAJ_COLLECTED);
-		System.out.println();*/
-
-		return trajectoryRDD;
-	}
-	
-	/**
-	 * Given a set of partition indexes, collect from the RDD the 
-	 * trajectories inside the given partitions.
+	 * Use the temporal RTree to prune by time [t0,t1].
 	 * </br>
 	 * Return whole trajectories (also filter from the RDD other
 	 * partitions that might contain trajectories in the given index set.
@@ -155,47 +60,47 @@ public class TrajectoryCollector implements Serializable{
 	 * If there is no trajectories to collect, then return null. 
 	 */
 	public JavaRDD<Trajectory> collectTrajectoriesByPartitionIndex(
-			final Collection<Integer> indexSet) {
+			final Collection<Integer> indexSet, final long t0, final long t1) {
 		// Filter the given partitions
-		JavaPairRDD<Integer, Partition> filteredPartitionsRDD = 
-			partitionsRDD.filter(new Function<Tuple2<Integer,Partition>, Boolean>() {
-				@Override
-				public Boolean call(Tuple2<Integer, Partition> partition) throws Exception {
+		JavaPairRDD<Integer, PartitionSeg> filteredPartitionsRDD = 
+			partitionsRDD.filter(new Function<Tuple2<Integer,PartitionSeg>, Boolean>() {
+				public Boolean call(Tuple2<Integer, PartitionSeg> partition) throws Exception {
 					return indexSet.contains(partition._1);
 				}
 			});
-		
+
 		// collection log
 		/*System.out.println("Collect Trajectories by Page Index.");
 		System.out.println("Total Pages: " + pagesRDD.count());
 		System.out.println("Total Pages to Collect: " + filteredPagesRDD.count());
 		TOTAL_PAGES_TO_COLLECT += filteredPagesRDD.count();	*/
 		
-		// check if there is any partition to for the given parameters
+		// check if there is any partition for the given parameters
 		// Note: (it might be there is no page in the given time interval for the given grid)
 		if(!filteredPartitionsRDD.isEmpty()){			
 			// Collect the IDs of the trajectories inside the given partitions.
+			// Only those trajectories which the active time satisfy the given time interval
 			final List<String> tIdList = 	
-					filteredPartitionsRDD.values().flatMap(new FlatMapFunction<Partition, String>() {
-					public Iterable<String> call(Partition partition) throws Exception {
-						return partition.getTrajectoryIdSet();
+					filteredPartitionsRDD.values().flatMap(
+							new FlatMapFunction<PartitionSeg, String>() {
+					public Iterable<String> call(PartitionSeg partition) throws Exception {
+						return partition.getTrajectoryIdSetByTime(t0, t1);
 					}
 				}).distinct().collect();
 
 			// retrieve from the TTT the indexes of all pages that 
 			// contains the trajectories in the list.
-			HashSet<Integer> diffIndexSet = 
+			final HashSet<Integer> diffIndexSet = 
 					trackTable.collectIndexListByTrajectoryId(tIdList);
 
 			// skip the partitions already retrieved 
 			diffIndexSet.removeAll(indexSet);
 
 			// filter the other partitions containing the trajectories (difference set)
-			JavaPairRDD<Integer, Partition> diffPartitionRDD = 
-					partitionsRDD.filter(new Function<Tuple2<Integer,Partition>, Boolean>() {
-						@Override
-						public Boolean call(Tuple2<Integer, Partition> partition) throws Exception {
-							return indexSet.contains(partition._1);
+			JavaPairRDD<Integer, PartitionSeg> diffPartitionRDD = 
+					partitionsRDD.filter(new Function<Tuple2<Integer,PartitionSeg>, Boolean>() {
+						public Boolean call(Tuple2<Integer, PartitionSeg> partition) throws Exception {
+							return diffIndexSet.contains(partition._1);
 						}
 					});
 
@@ -205,11 +110,15 @@ public class TrajectoryCollector implements Serializable{
 			// map each partition to a list of key value pairs containing 
 			// the desired trajectories segments
 			JavaPairRDD<String, STSegment> segmentsRDD = 
-					filteredPartitionsRDD.values().flatMapToPair(new PairFlatMapFunction<Partition, String, STSegment>() {
-					public Iterable<Tuple2<String, STSegment>> call(Partition partition) throws Exception {
+					filteredPartitionsRDD.values().flatMapToPair(
+							new PairFlatMapFunction<PartitionSeg, String, STSegment>() {
+					public Iterable<Tuple2<String, STSegment>> call(PartitionSeg partition) throws Exception {
 						// iterable list to return
 						List<Tuple2<String, STSegment>> list = 
 								new LinkedList<Tuple2<String, STSegment>>();
+						// prune by time using the tree
+						/*List<STSegment> candidatesList = 
+								partition.getSegmentsTree().getSegmentsByTime(t0, t1);*/
 						for(STSegment s : partition.getSegmentsList()){
 							if(tIdList.contains(s.parentId)){
 								list.add(new Tuple2<String, STSegment>(s.parentId, s));
@@ -218,20 +127,19 @@ public class TrajectoryCollector implements Serializable{
 						return list;
 					}
 				});
-			
+
 			// merge segments by key
 			Trajectory emptyTrajectory = new Trajectory();
 			// aggregate functions
 			Function2<Trajectory, STSegment, Trajectory> seqFunc = new Function2<Trajectory, STSegment, Trajectory>() {
-				@Override
 				public Trajectory call(Trajectory t, STSegment s) throws Exception {
-					t.addSegment(s); t.id = s.parentId;
+					t.addSegment(s); 
+					t.id = s.parentId;
 					return t;
 				}
 			};
 			Function2<Trajectory, Trajectory, Trajectory> combFunc = 
 					new Function2<Trajectory, Trajectory, Trajectory>() {
-				@Override
 				public Trajectory call(Trajectory t1, Trajectory t2) throws Exception {
 					t1.merge(t2);
 					return t1;
@@ -241,7 +149,7 @@ public class TrajectoryCollector implements Serializable{
 			// aggregate segments by key into a trajectory (unsorted)
 			JavaRDD<Trajectory> trajectoryRDD = 
 					segmentsRDD.aggregateByKey(emptyTrajectory, seqFunc, combFunc).values();
-			
+
 			// post processing
 			trajectoryRDD = postProcess(trajectoryRDD);
 			

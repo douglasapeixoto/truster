@@ -5,16 +5,16 @@ import java.util.List;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 
-import uq.fs.FileReaderService;
+import uq.fs.DataConverter;
 import uq.spark.EnvironmentVariables;
 import uq.spatial.GeoInterface;
 import uq.spatial.Grid;
 import uq.spatial.STRectangle;
 import uq.spatial.Trajectory;
-import uq.truster.partition.Partition;
-import uq.truster.partition.SpatialPartitionModule;
-import uq.truster.partition.TrajectoryTrackTable;
-import uq.truster.query.QueryProcessingModule;
+import uq.truster.partition.PartitionSeg;
+import uq.truster.partition.SpatialPartitionModuleSeg;
+import uq.truster.partition.TrajectoryTrackTableSeg;
+import uq.truster.query.QueryProcessingModuleSeg;
 
 /**
  * Truster main app class
@@ -41,10 +41,10 @@ public class TrusterApp implements EnvironmentVariables, GeoInterface {
 		/*****
 		 * PARTITION THE DATA - TRUSTER SPATIAL PARTITION MODULE 
 		 *****/
-		SpatialPartitionModule partitionMod = new SpatialPartitionModule();
-		JavaPairRDD<Integer, Partition> partitionsRDD = 
+		SpatialPartitionModuleSeg partitionMod = new SpatialPartitionModuleSeg();
+		JavaPairRDD<Integer, PartitionSeg> partitionsRDD = 
 				partitionMod.partition(trajectoryRDD, grid);
-		TrajectoryTrackTable trackTable = partitionMod.getTTT();
+		TrajectoryTrackTableSeg trackTable = partitionMod.getTTT();
 		
 		// force action to build partitions
 		System.out.println("Num. Partitions: " + partitionsRDD.count());
@@ -52,8 +52,8 @@ public class TrusterApp implements EnvironmentVariables, GeoInterface {
 		/*****
 		 * PROCESS QUERIES - TRUSTER QUERY PROCESSING MODULE 
 		 *****/
-		QueryProcessingModule queryMod = 
-				new QueryProcessingModule(partitionsRDD, trackTable, grid);
+		QueryProcessingModuleSeg queryMod = 
+				new QueryProcessingModuleSeg(partitionsRDD, trackTable, grid);
 		// query object
 		STRectangle query = new STRectangle(0, 0, 100, 100, 0, 1000);
 		// query result
@@ -73,7 +73,7 @@ public class TrusterApp implements EnvironmentVariables, GeoInterface {
 		fileRDD.persist(STORAGE_LEVEL);
 		
 		// convert the input data to a RDD of trajectory objects
-		FileReaderService rdd = new FileReaderService();
+		DataConverter rdd = new DataConverter();
 		JavaRDD<Trajectory> trajectoryRDD = 
 				rdd.mapRawDataToTrajectoryRDD(fileRDD);
 		trajectoryRDD.persist(STORAGE_LEVEL);

@@ -152,4 +152,10 @@ public class Circle implements Serializable, GeoInterface {
 		}
 		return false;
 	}
+	
+	@Override
+	public String toString(){
+		String s = "Center: (" + center().toString() + ") Radius: " + radius;
+		return s;
+	}
 }

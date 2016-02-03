@@ -20,7 +20,7 @@ import uq.spatial.Trajectory;
  *
  */
 @SuppressWarnings("serial")
-public class FileReaderService implements Serializable, EnvironmentVariables{
+public class DataConverter implements Serializable, EnvironmentVariables{
 
 	/**
 	 * Convert an input dataset (RDD) file of trajectories

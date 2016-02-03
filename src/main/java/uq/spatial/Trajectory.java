@@ -11,6 +11,8 @@ import java.util.List;
 
 import org.apache.hadoop.io.Writable;
 
+import uq.spatial.distance.TrajectoryDistanceCalculator;
+
 /**
  * A trajectory entity.
  * 
@@ -54,6 +56,23 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 	
 	/**
+	 * The list of spatial-temporal segments in this trajectory.
+	 */
+	public List<STSegment> getSegmentsList() {
+		List<STSegment> segList = 
+				new ArrayList<STSegment>();
+		if(pointsList.size() < 2){
+			return segList;
+		}
+		for(int i=0; i<pointsList.size()-1; i++){
+			Point p1 = pointsList.get(i);
+			Point p2 = pointsList.get(i+1);
+			segList.add(new STSegment(p1, p2));
+		}
+		return segList;
+	}
+	
+	/**
 	 * Add a point to this trajectory (end). 
 	 */
 	public void addPoint(Point point){
@@ -94,13 +113,52 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 		: "Trajectory index out of bound";
 		pointsList.remove(index);
 	}
-	
+
+	/**
+	 * Remove consecutive duplicated points from this 
+	 * trajectory (if there is any).
+	 * Note that duplicate points are checked under equals() 
+	 * Point function over consecutive points only.
+	 * 
+	 * @return Return this updated trajectory.
+	 */
+	public Trajectory removeDuplicates(){
+		// nothing to remove
+		if(size()<=1){
+			return this;
+		}
+		// new points list
+		List<Point> auxPointsList = 
+				new ArrayList<Point>();
+		// add first point
+		Point previous = pointsList.get(0);
+		auxPointsList.add(previous);
+		for(int i=1; i<size(); i++){
+			Point current = pointsList.get(i);
+			if(!current.equals(previous)){
+				auxPointsList.add(current);
+			}
+			previous = current;
+		}
+		// update
+		pointsList = auxPointsList;
+		return this;
+	}
 	/**
 	 * Merge two trajectories.
 	 * Appends the trajectory t to the end of this trajectory.
 	 */
 	public void merge(Trajectory t){
 		pointsList.addAll(t.getPointsList());
+	}
+	
+	/**
+	 * The distance (similarity) between these two trajectory.
+	 * </br>
+	 * Must provide the distance measure to use. 
+	 */
+	public double dist(Trajectory t, TrajectoryDistanceCalculator distanceMeasure){
+		return distanceMeasure.getDistance(this, t);
 	}
 	
 	/**
@@ -189,7 +247,7 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 	
 	/**
-	 * Return the average sample rate of the points in 
+	 * Return the average sampling rate of the points in 
 	 * this trajectory (average time between every sample
 	 * point).
 	 */
@@ -225,7 +283,7 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Return a sub-trajectory of this trajectory, from 
 	 * beginIndex inclusive to endIndex exclusive.
@@ -261,50 +319,51 @@ public class Trajectory implements Serializable, Cloneable, Writable, GeoInterfa
 	}
 
 	/**
-	 * True if these trajectories intersect each other
+	 * Check if these trajectories intersect each other
 	 * (Euclidean space only).
-	 * If the trajectories only touch edges or vertexes 
-	 * than also returns false.
+	 * </br>
+	 * If the trajectories only touch edges or vertexes, 
+	 * then also returns false.
 	 */
 	public boolean intersect(Trajectory t){
 		if(this.isEmpty() || t.isEmpty()){
 			return false;
 		}
-		double sx, sy, rx, ry;
-		double cross, v, u;
-		
 		for(int i=0; i < pointsList.size()-1; i++){
 			Point i1 = pointsList.get(i);
 			Point i2 = pointsList.get(i+1);
-			// trajectory edge vector 
-			sx = i2.x - i1.x;
-			sy = i2.y - i1.y;
-
+			Segment si = new Segment(i1.x, i1.y, i2.x, i2.y);
 			for(int j=0; j < t.size()-1; j++){
 				Point j1 = t.get(j);
 				Point j2 = t.get(j+1);
-				// trajectory edge vector
-				rx = j2.x - j1.x;
-				ry = j2.y - j1.y;
-
-				// cross product r x s
-				cross = (rx*sy) - (ry*sx);
-					
-				// they are parallel or colinear
-				if(cross != 0.0){
-					v = (i1.x - j1.x)*sy - (i1.y - j1.y)*sx;
-					   v = v / cross;
-					u = (i1.x - j1.x)*ry - (i1.y - j1.y)*rx;
-						   u = u / cross;
-
-				    if(v > 0.0 && v < 1.0 && 
-				       u > 0.0 && u < 1.0){
-				    	return true;
-				    }
+				Segment sj = new Segment(j1.x, j1.y, j2.x, j2.y);
+				if(si.intersect(sj)){
+					return true;
 				}
 			}
 		}
-		
+	    return false;
+	}
+	
+	/**
+	 * Check if this trajectory intersects with the given 
+	 * line segment (Euclidean space only).
+	 * </br>
+	 * If the segment only touches edges or vertexes 
+	 * of the trajectory, then also returns false.
+	 */
+	public boolean intersect(STSegment s){
+		if(this.isEmpty() || s==null){
+			return false;
+		}
+		for(int i=0; i < pointsList.size()-1; i++){
+			Point p1 = pointsList.get(i);
+			Point p2 = pointsList.get(i+1);
+			Segment si = new Segment(p1.x, p1.y, p2.x, p2.y);
+			if(si.intersect(s)){
+				return true;
+			}
+		}
 	    return false;
 	}
 	

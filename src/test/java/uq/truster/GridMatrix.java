@@ -121,11 +121,11 @@ public class GridMatrix implements Serializable {
 		System.out.println("Grid Dimension: [" + sizeX + " x " + sizeY + "]\n");
 		for(int y=sizeY-1; y>=0; y--){
 			for(int x=0; x<sizeX; x++){
-				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",grid[x][y].minX,grid[x][y].maxY,grid[x][y].maxX,grid[x][y].maxY);
+				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",grid[x][y].min_x,grid[x][y].max_y,grid[x][y].max_x,grid[x][y].max_y);
 			}	
 			System.out.println();
 			for(int x=0; x<sizeX; x++){
-				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",grid[x][y].minX,grid[x][y].minY,grid[x][y].maxX,grid[x][y].minY);
+				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",grid[x][y].min_x,grid[x][y].min_y,grid[x][y].max_x,grid[x][y].min_y);
 			}
 			System.out.println("\n");
 		}

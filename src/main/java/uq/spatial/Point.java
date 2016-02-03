@@ -22,7 +22,10 @@ public class Point implements Serializable, Cloneable, Writable {
 	public double x;
 	public double y;
 	public long time;
-
+	
+	// the grid this point belongs to
+	public int gridId;
+	
 	public Point(){}
 	public Point(double x, double y) {
 		this.x = x;
@@ -40,9 +43,7 @@ public class Point implements Serializable, Cloneable, Writable {
 	 * and a given point p.
 	 */
 	public double dist(Point p){
-		PointDistanceCalculator dist = 
-				new EuclideanDistanceCalculator();
-		return dist.getDistance(p.x, p.y, this.x, this.y);
+		return dist(p.x, p.y);
 	}
 	
 	/**

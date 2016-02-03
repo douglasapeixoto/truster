@@ -8,7 +8,8 @@ import uq.spatial.STSegment;
 import uq.spatial.SegmentRTree;
 
 /**
- * A data partition.
+ * A data partition for segments.
+ * </br>
  * Each partition represents a rectangle in the 
  * grid representation, and contains a RTree with 
  * the segments that overlap with that rectangle.
@@ -17,13 +18,13 @@ import uq.spatial.SegmentRTree;
  *
  */
 @SuppressWarnings("serial")
-public class Partition implements Serializable {
+public class PartitionSeg implements Serializable {
 	/**
 	 * The tree containing the segments in this partition.
 	 */
 	private SegmentRTree segmentTree = 
 			new SegmentRTree();
-	
+
 	/**
 	 * The parent trajectory of the segments in this partition.
 	 */
@@ -57,6 +58,24 @@ public class Partition implements Serializable {
 	}
 	
 	/**
+	 * Return the set of trajectories that overlaps with this partition,
+	 * within the given time interval.
+	 * </br>
+	 * The parent trajectories of the segments in this partition.
+	 * 
+	 * @return Return trajectories ID.
+	 */
+	public HashSet<String> getTrajectoryIdSetByTime(long t0, long t1){
+		List<STSegment> list = 
+				segmentTree.getSegmentsByTime(t0, t1);
+		HashSet<String> idSet = new HashSet<String>();
+		for(STSegment s : list){
+			idSet.add(s.parentId);
+		}
+		return idSet;
+	}
+	
+	/**
 	 * Return the tree of segments in this partition.
 	 */
 	public SegmentRTree getSegmentsTree(){
@@ -68,7 +87,7 @@ public class Partition implements Serializable {
 	 * 
 	 * @return Return this merged partition.
 	 */
-	public Partition merge(Partition partition){
+	public PartitionSeg merge(PartitionSeg partition){
 		segmentTree.addAll(partition.getSegmentsList());
 		parentIdSet.addAll(partition.getTrajectoryIdSet());
 		return this;

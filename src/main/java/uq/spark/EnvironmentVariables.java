@@ -24,11 +24,11 @@ public interface EnvironmentVariables {
 	
 	// path to the data set folders/files 
 	static final String DATA_PATH = 
-			LOCAL_PATH + "/trajectory-data/split1," + 
+		/*	LOCAL_PATH + "/trajectory-data/split1," + 
 			LOCAL_PATH + "/trajectory-data/split2," +
-			LOCAL_PATH + "/trajectory-data/split3," +
+			LOCAL_PATH + "/trajectory-data/split3," +*/
 			LOCAL_PATH + "/trajectory-data/split4";
-	
+			
 	// path to output folder inside HDFS
 	static final String HDFS_OUTPUT = 
 			"/spark-data/output/";
@@ -42,12 +42,18 @@ public interface EnvironmentVariables {
 			"/home/uqdalves/hadoop/hadoop-2.7.1";
 	
 	// the min number of partitions of the input data
-	static final int NUM_PARTITIONS_DATA = 250; // number of data blocks
+	static final int NUM_PARTITIONS_DATA = 60; // number of data blocks
 		
 	// RDD storage level
-	static final StorageLevel STORAGE_LEVEL= 
-			StorageLevel.DISK_ONLY();
+	static final StorageLevel STORAGE_LEVEL = 
+			StorageLevel.MEMORY_ONLY();
 	
+	// number of reduce tasks for the indexing process
+	static final int NUM_PARTITIONS_TTT = NUM_PARTITIONS_DATA / 2;
+	
+	// RDD storage level of the Trajectory Track Table
+	static final StorageLevel STORAGE_LEVEL_TTT = 
+			StorageLevel.MEMORY_ONLY();
 	// an infinity value
 	static final double INF = Double.MAX_VALUE;
 

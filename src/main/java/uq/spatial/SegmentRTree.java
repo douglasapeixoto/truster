@@ -21,7 +21,8 @@ public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 	private List<STSegment> segmentList = 
 			new ArrayList<STSegment>();
 	// null dimension
-	private static final float NULL_DIM = 1;
+	private static final float NULL_DIM_MIN = 0;
+	private static final float NULL_DIM_MAX = 1;
 	
 	/**
 	 * Initialize this tree
@@ -44,7 +45,7 @@ public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 	public void add(STSegment s){
 		// add the time-stamp of this segment to the RTree
 		// add as a rectangle of base=time-stamp and height=NULL_DIM
-		Rectangle r = new Rectangle(s.t1, NULL_DIM, s.t2, NULL_DIM);
+		Rectangle r = new Rectangle(s.t1, NULL_DIM_MIN, s.t2, NULL_DIM_MAX);
 		super.add(r, segmentList.size());
 		this.segmentList.add(s);
 	}
@@ -68,7 +69,7 @@ public class SegmentRTree extends RTree implements Serializable, GeoInterface{
 		if(isEmpty()){
 			return sList;
 		}
-		final Rectangle r = new Rectangle(t1, NULL_DIM, t2, NULL_DIM);
+		final Rectangle r = new Rectangle(t1, NULL_DIM_MIN, t2, NULL_DIM_MAX);
 		this.intersects(r, new TIntProcedure() {
 			public boolean execute(int i) {
 				sList.add(segmentList.get(i));	

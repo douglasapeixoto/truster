@@ -15,37 +15,39 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 
 import scala.Tuple2;
-
 import uq.spatial.Circle;
 import uq.spatial.Grid;
 import uq.spatial.Point;
-import uq.spatial.Rectangle;
 import uq.spatial.STRectangle;
 import uq.spatial.STSegment;
 import uq.spatial.Segment;
 import uq.spatial.Trajectory;
 import uq.spatial.distance.EDwPDistanceCalculator;
 import uq.spatial.distance.EuclideanDistanceCalculator;
-import uq.truster.partition.Partition;
-import uq.truster.partition.TrajectoryCollector;
-import uq.truster.partition.TrajectoryTrackTable;
+import uq.spatial.distance.PointDistanceCalculator;
+import uq.spatial.distance.TrajectoryDistanceCalculator;
+import uq.truster.partition.PartitionSeg;
+import uq.truster.partition.TrajectoryCollectorSeg;
+import uq.truster.partition.TrajectoryTrackTableSeg;
 
 /**
  * TRUSTER Query processing module.
+ * </br>
+ * For segments partitioning.
  * 
  * @author uqdalves
  *
  */
 @SuppressWarnings("serial")
-public class QueryProcessingModule implements Serializable {
-	private JavaPairRDD<Integer, Partition> partitionsRDD; 
+public class QueryProcessingModuleSeg implements Serializable {
+	private JavaPairRDD<Integer, PartitionSeg> partitionsRDD; 
 	private Grid grid;
-	private TrajectoryCollector collector;
+	private TrajectoryCollectorSeg collector;
 	
 	// distance measure
-	private EDwPDistanceCalculator edwp = 
+	private TrajectoryDistanceCalculator edwp = 
 			new EDwPDistanceCalculator();
-	private EuclideanDistanceCalculator euclid = 
+	private PointDistanceCalculator euclid = 
 			new EuclideanDistanceCalculator();
 	// to sort trajectories by distance
 	private NeighborComparator<NearNeighbor> nnComparator = 
@@ -54,14 +56,14 @@ public class QueryProcessingModule implements Serializable {
 	/**
 	 * Set the data partition RDD and the grid used to process queries.
 	 */
-	public QueryProcessingModule(
-			final JavaPairRDD<Integer, Partition> partitionsRDD, 
-			final TrajectoryTrackTable trackTable,
+	public QueryProcessingModuleSeg(
+			final JavaPairRDD<Integer, PartitionSeg> partitionsRDD, 
+			final TrajectoryTrackTableSeg trackTable,
 			final Grid grid) {
 		this.partitionsRDD = partitionsRDD;
 		this.grid = grid;
 		// set up trajectory collector
-		collector = new TrajectoryCollector(partitionsRDD, trackTable);
+		collector = new TrajectoryCollectorSeg(partitionsRDD, trackTable);
 	}
 
 	/**
@@ -74,6 +76,7 @@ public class QueryProcessingModule implements Serializable {
 	 **/
 	public List<Trajectory> processSelectionQuery(
 			final STRectangle query){
+		System.out.println("\n[TRUSTER] Running Spatial-Temporal Selection..\n");
 		
 		// get the rectangles in the grid that overlap with the query area
 		final List<Integer> idList = grid.getOverlappingRectangles(query);
@@ -83,10 +86,9 @@ public class QueryProcessingModule implements Serializable {
 		 */
 		// filter partitions that overlap/cover the query area
 		// use Spark filter function
-		JavaPairRDD<Integer, Partition> filterRDD = 
-			partitionsRDD.filter(new Function<Tuple2<Integer,Partition>, Boolean>() {
-				@Override
-				public Boolean call(Tuple2<Integer, Partition> partition) throws Exception {
+		JavaPairRDD<Integer, PartitionSeg> filterRDD = 
+			partitionsRDD.filter(new Function<Tuple2<Integer,PartitionSeg>, Boolean>() {
+				public Boolean call(Tuple2<Integer, PartitionSeg> partition) throws Exception {
 					return idList.contains(partition._1); 
 				}
 			});
@@ -94,21 +96,23 @@ public class QueryProcessingModule implements Serializable {
 		/**
 		 * REFINEMENT STEP:
 		 */
-		//	JavaRDD<STSegment> refineRDD = 
+		// map each partition to a list of segments that satisfy the query
 		JavaPairRDD<String, STSegment> refineSegmentsRDD = 
-			filterRDD.flatMapToPair(new PairFlatMapFunction<Tuple2<Integer,Partition>, String, STSegment>() {
+			filterRDD.flatMapToPair(new PairFlatMapFunction<Tuple2<Integer,PartitionSeg>, String, STSegment>() {
 				// refinement function
-				@Override
-				public Iterable<Tuple2<String, STSegment>> call(Tuple2<Integer, Partition> partition) throws Exception {
+				public Iterable<Tuple2<String, STSegment>> call(Tuple2<Integer, PartitionSeg> partition) throws Exception {
 					List<Tuple2<String, STSegment>> segmentsList = 
 							new ArrayList<Tuple2<String, STSegment>>();
-					// refine
 					List<STSegment> candidatesList =
 							partition._2.getSegmentsTree().getSegmentsByTime(query.t1, query.t2);
 					for(STSegment s : candidatesList){
-						if(query.contains(s.x1, s.y1, s.x2, s.y2) &&
-							s.t1>=query.t1 && s.t2<=query.t2){
-							segmentsList.add(new Tuple2<String, STSegment>(s.parentId, s));
+						// refine: if at least of end point satisfy the query, 
+						// then add the segment to the result list
+						if(query.contains(s)){
+							if((s.t1 >= query.t1 && s.t1 <= query.t2) ||
+							   (s.t2 >= query.t1 && s.t2 <= query.t2)){
+								segmentsList.add(new Tuple2<String, STSegment>(s.parentId, s));
+							}
 						}
 					}
 					return segmentsList;
@@ -124,26 +128,27 @@ public class QueryProcessingModule implements Serializable {
 	}
 	
 	/**
-	 * Given a spatial-temporal query region (spatial-temporal rectangle),
-	 * returns from the partition RDD all sub-trajectory (post-processed segments) 
-	 * that satisfy the query, that is, all segments covered by the query 
-	 * area within the query time interval.
+	 * Given a query trajectory Q, a time interval [t0,t1], and a integer K,
+	 * returns from the partition RDD K most nearest neighbor of Q within
+	 * the given time interval [t0,t1].
 	 * 
 	 * @return A list of sub-trajectory that satisfy the query.
 	 **/
 	public List<NearNeighbor> processKNNQuery(
 			final Trajectory query, final long t0, final long t1, final int k){
+		System.out.println("\n[TRUSTER] Running " + k + "-NN Query..\n");
+		
 		/**
 		 * FIRST FILTER:
 		 */
 		// check the grid rectangles that overlaps with the query 
 		final HashSet<Integer> gridIdSet = 
 				getOverlappingRectangles(query);
-		
+System.out.println("Num. Overlap. Grids with Query (1): " + gridIdSet.size());		
 		// collect the trajectories inside those grid partitions (whole trajectories)
 		JavaRDD<Trajectory> trajectoryRDD = 
-				collector.collectTrajectoriesByPartitionIndex(gridIdSet);
-
+				collector.collectTrajectoriesByPartitionIndex(gridIdSet, t0, t1);
+System.out.println("Num. Trajectories Filtered (1): " + trajectoryRDD.count());
 		/**
 		 * FIRST REFINEMENT:
 		 * Get the kNN inside the partitions containing the query trajectory
@@ -152,41 +157,46 @@ public class QueryProcessingModule implements Serializable {
 		// map each trajectory to a NN object
 		List<NearNeighbor> candidatesList = new LinkedList<NearNeighbor>();
 		candidatesList = getCandidatesNN(trajectoryRDD, candidatesList, query, t0, t1);
-
+System.out.println("Candidate List Size (1): " + candidatesList.size());
 		/**
 		 * SECOND FILTER:
 		 */
-		// get the farthest distance to the knn trajectory
-		Point fartherPoint = new Point();
+		// get the k-th-NN returned
 		Trajectory knn;
 		if(candidatesList.size() >= k){
 			knn = candidatesList.get(k-1);
-		} else{
+		} else if(candidatesList.size() > 0){
 			knn = candidatesList.get(candidatesList.size()-1);
+		} else{ // no candidates to return (need to extend the search area)
+			return candidatesList;
 		}
-		double farthestDistance = getFarthestDistance(query, knn, fartherPoint);
 		
 		// get the MBR of the circle composed by the farthest distance 
 		// and farthest point
-		Circle c = new Circle(fartherPoint, farthestDistance);
-		Rectangle queryRegion = c.mbr();
-
+		Circle c = getFarthestPointCircle(query, knn);
+System.out.println("Query Circle: ");
+c.toString();
 		// check the grid rectangles that overlaps with the query,
 		// except those already retrieved
 		final List<Integer> extendGridIdSet = 
-				grid.getOverlappingRectangles(queryRegion);
+				grid.getOverlappingRectangles(c.mbr());
 		extendGridIdSet.removeAll(gridIdSet);
-
-		// collect the new trajectories
-		JavaRDD<Trajectory> extendTrajectoryRDD = 
-				collector.collectTrajectoriesByPartitionIndex(extendGridIdSet);
-
+System.out.println("Num. Overlap. Grids with Circle MBR (2): " + extendGridIdSet.size());	
 		/**
 		 * SECOND REFINEMENT:
 		 */
-		// update the candidates list
-		candidatesList = getCandidatesNN(extendTrajectoryRDD, candidatesList, query, t0, t1);
-				
+		// if there are other grids to check
+		if(extendGridIdSet.size() > 0){
+			// collect the new trajectories
+			JavaRDD<Trajectory> extendTrajectoryRDD = 
+				collector.collectTrajectoriesByPartitionIndex(extendGridIdSet, t0, t1);
+System.out.println("Num. Trajectories Filtered (2): " + extendTrajectoryRDD.count());
+			// refine and update the candidates list
+			candidatesList = getCandidatesNN(extendTrajectoryRDD, candidatesList, query, t0, t1);
+System.out.println("Candidate List Size (2): " + candidatesList.size());
+		}
+		
+		// collect result
 		if(candidatesList.size() >= k){
 			return candidatesList.subList(0, k);
 		}
@@ -194,28 +204,27 @@ public class QueryProcessingModule implements Serializable {
 	}
 	
 	/**
-	 * Given two trajectories t and q, return the farthest distance
-	 * between these trajectories sample points.
-	 * </br>
-	 * Set the points with farthest distance of t in farthest_t.
-	 * 
-	 * @return
+	 * Given two trajectories t1 and t2, calculate the circle composed of 
+	 * the centroid of t1 as center, and the farthest distance
+	 * between t1 and t2 sample points as radius.
 	 */
-	private double getFarthestDistance(
-			Trajectory t, Trajectory q,
-			Point farthest_t) {
+	private Circle getFarthestPointCircle(Trajectory t1, Trajectory t2) {
 		double farthestDist = 0;
 		double dist;
-		for(Point pt : t.getPointsList()){
-			for(Point pq : q.getPointsList()){
-				dist = euclid.getDistance(pt, pq);
+		double x = 0, y = 0;
+		for(Point p1 : t1.getPointsList()){
+			for(Point p2 : t2.getPointsList()){
+				dist = euclid.getDistance(p1, p2);
 				if(dist > farthestDist){
 					farthestDist = dist;
-					farthest_t = pt;
 				}
 			}
+			x += p1.x;
+			y += p1.y;
 		}
-		return farthestDist;
+		int size = t1.size();
+		Point centroid = new Point(x/size, y/size);
+		return new Circle(centroid, farthestDist);
 	}
 
 	/**
@@ -230,24 +239,24 @@ public class QueryProcessingModule implements Serializable {
 		// group segments belonging to the same parent trajectory
 		Function2<SegmentBag, STSegment, SegmentBag> seqFunc = 
 				new Function2<SegmentBag, STSegment, SegmentBag>() {
-			public SegmentBag call(SegmentBag obj, STSegment t) throws Exception {
-				obj.add(t);
-				return obj;
+			public SegmentBag call(SegmentBag bag, STSegment segment) throws Exception {
+				bag.add(segment);
+				return bag;
 			}
 		};
 		Function2<SegmentBag, SegmentBag, SegmentBag> combFunc = 
 				new Function2<SegmentBag, SegmentBag, SegmentBag>() {
-			public SegmentBag call(SegmentBag obj1, SegmentBag obj2) throws Exception {
-				return obj1.merge(obj2);
+			public SegmentBag call(SegmentBag bag1, SegmentBag bag2) throws Exception {
+				return bag1.merge(bag2);
 			}
 		};
-		// aggregate the sub-trajectories by key, and post-process
+		// aggregate segments by key, and post-process
 		List<Trajectory> selectList =
 			subTrajectoryRDD.aggregateByKey(emptyObj, seqFunc, combFunc)
 				.values().flatMap(new FlatMapFunction<SegmentBag, Trajectory>() {
-					public Iterable<Trajectory> call(SegmentBag obj) throws Exception {
+					public Iterable<Trajectory> call(SegmentBag bag) throws Exception {
 						// post-process and return
-						return obj.postProcess();
+						return bag.postProcess();
 					}
 			}).collect();
 
@@ -300,7 +309,7 @@ public class QueryProcessingModule implements Serializable {
 				public NearNeighbor call(Trajectory t) throws Exception {
 					NearNeighbor nn = new NearNeighbor(t);
 					nn.distance = edwp.getDistance(q, t);
-					return nn;			
+					return nn;
 				}
 			}).collect();
 		// add new candidates

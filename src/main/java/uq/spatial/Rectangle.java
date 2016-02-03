@@ -11,41 +11,41 @@ import java.util.List;
  * @author uqdalves
  */
 @SuppressWarnings("serial")
-public class Rectangle implements Serializable {
+public class Rectangle implements Serializable, GeoInterface {
 	// X and Y axis position
-	public double minX;
-	public double minY;
-	public double maxX;
-	public double maxY;
+	public double min_x;
+	public double min_y;
+	public double max_x;
+	public double max_y;
 	
 	public Rectangle(){}
-	public Rectangle(double minX, double minY, double maxX, double maxY) {
-		this.minX = minX;
-		this.minY = minY;
-		this.maxX = maxX;
-		this.maxY = maxY;
+	public Rectangle(double min_x, double min_y, double max_x, double max_y) {
+		this.min_x = min_x;
+		this.min_y = min_y;
+		this.max_x = max_x;
+		this.max_y = max_y;
 	}
 
 	/**
 	 * The perimeter of this rectangle
 	 */
 	public double perimeter(){
-		return (2*Math.abs(maxY-minY) + 2*Math.abs(maxX-minX));
+		return (2*Math.abs(max_y-min_y) + 2*Math.abs(max_x-min_x));
 	}
-	
+
 	/**
 	 * The area of this rectangle
 	 */
 	public double area(){
-		return (maxY-minY)*(maxX-minX);
+		return (max_y-min_y)*(max_x-min_x);
 	}
 	
 	/**
 	 * Returns the center of this rectangle as a coordinate point.
 	 */
 	public Point center(){
-		double xCenter = minX + (maxX - minX)/2;
-		double yCenter = minY + (maxY - minY)/2; 
+		double xCenter = min_x + (max_x - min_x)/2;
+		double yCenter = min_y + (max_y - min_y)/2; 
 		return new Point(xCenter, yCenter);
 	}
 
@@ -64,8 +64,8 @@ public class Rectangle implements Serializable {
 	 * Point given by X and Y coordinates
 	 */
 	public boolean contains(double x, double y){
-		if(x >= minX && x <= maxX &&
-		   y >= minY && y <= maxY){
+		if(x > min_x && x < max_x &&
+		   y > min_y && y < max_y){
 			return true;
 		}
 		return false;
@@ -109,13 +109,13 @@ public class Rectangle implements Serializable {
 	 */
 	public boolean touch(double x, double y){
 		// check top and bottom edges
-		if((y == maxY || y == minY) &&
-		    x >= minX && x <= maxX){
+		if((y == max_y || y == min_y) &&
+		    x >= min_x && x <= max_x){
 			return true;
 		}
 		// check left and right edges
-		if((x == minX || x == maxX) &&
-			y >= minY && y <= maxY){
+		if((x == min_x || x == max_x) &&
+			y >= min_y && y <= max_y){
 			return true;
 		}
 		return false;
@@ -125,10 +125,10 @@ public class Rectangle implements Serializable {
 	 * Check is these two rectangles overlap.
 	 */
 	public boolean overlap(Rectangle r){
-		if(this.maxX < r.minX) return false;
-		if(this.minX > r.maxX) return false;
-		if(this.maxY < r.minY) return false;
-		if(this.minY > r.maxY) return false;
+		if(this.max_x < r.min_x) return false;
+		if(this.min_x > r.max_x) return false;
+		if(this.max_y < r.min_y) return false;
+		if(this.min_y > r.max_y) return false;
 		return true;
 	}
 	
@@ -138,7 +138,7 @@ public class Rectangle implements Serializable {
 	 * the given line segment.
 	 */
 	public boolean overlap(Segment s){
-		if(contains(s) || intersect(s)!=null){
+		if(contains(s) || intersect(s)){
 			return true;
 		}
 		return false;
@@ -152,8 +152,7 @@ public class Rectangle implements Serializable {
 	 * Line segment given by endpoint coordinates.
 	 */
 	public boolean overlap(double x1, double y1, double x2, double y2){
-		if(contains(x1, y1, x2, y2) || 
-		   intersect(x1, y1, x2, y2)!=null){
+		if(contains(x1, y1, x2, y2) || intersect(x1, y1, x2, y2)){
 			return true;
 		}
 		return false;
@@ -161,11 +160,8 @@ public class Rectangle implements Serializable {
 	
 	/**
 	 * Check if the given line segment intersects this rectangle.
-	 * 
-	 * @return Return the rectangle edge which intersect with the
-	 * given line segment. If they do not intersect then return null.
 	 */
-	public Segment intersect(Segment s){
+	public boolean intersect(Segment s){
 		return intersect(s.x1, s.y1, s.x2, s.y2);
 	}
 
@@ -173,44 +169,100 @@ public class Rectangle implements Serializable {
 	 * Check if the given line segment intersects this rectangle.
 	 * </br>
 	 * Line segment is given by end point coordinates.
-	 * 
-	 * @return Return the rectangle edge which intersect with the
-	 * given line segment. If they do not intersect then return null.
 	 */
-	public Segment intersect(double x1, double y1, double x2, double y2){
+	public boolean intersect(double x1, double y1, double x2, double y2){
 		// check box LEFT edge
-		Segment egde = new Segment(minX, minY, minX, maxY);
-		if(egde.intersect(x1, y1, x2, y2)){
-			return egde;
+		Segment edge = new Segment(min_x, min_y, min_x, max_y);
+		if(edge.intersect(x1, y1, x2, y2)){
+			return true;
 		}
 		// check RIGHT edge
-		egde = new Segment(maxX, minY, maxX, maxY);
-		if(egde.intersect(x1, y1, x2, y2)){
-			return egde;
+		edge = new Segment(max_x, min_y, max_x, max_y);
+		if(edge.intersect(x1, y1, x2, y2)){
+			return true;
 		}
 		// check TOP edge
-		egde = new Segment(minX, maxY, maxX, maxY);
-		if(egde.intersect(x1, y1, x2, y2)){
-			return egde;
+		edge = new Segment(min_x, max_y, max_x, max_y);
+		if(edge.intersect(x1, y1, x2, y2)){
+			return true;
 		}
 		// check BOTTOM edge
-		egde = new Segment(minX, minY, maxX, minY);
-		if(egde.intersect(x1, y1, x2, y2)){
-			return egde;
+		edge = new Segment(min_x, min_y, max_x, min_y);
+		if(edge.intersect(x1, y1, x2, y2)){
+			return true;
 		}
 		// no intersection
-	    return null;
+	    return false;
+	}
+	
+	/**
+	 * The shortest distance between these two rectangles.
+	 * </br>
+	 * The distance is the shortest distance between 
+	 * the pairwise edges.
+	 */
+	public double dist(Rectangle r){
+		double min_dist = INF;
+		double dist;
+		for(Segment si : this.getEdgeList()){
+			for(Segment sj : r.getEdgeList()){
+				dist = si.dist(sj);
+				if(dist < min_dist){
+					min_dist = dist;
+				}
+			}
+		}
+		return min_dist;
 	}
 
 	/**
-	 * Return the coordinates of the four vertexes of this rectangle.
+	 * The shortest distance between this rectangle
+	 * and the given line segment.
+	 * </br>
+	 * The distance is the shortest distance between 
+	 * the given segment and the rectangle edges.
+	 */
+	public double dist(Segment s){
+		double min_dist = INF;
+		double dist;
+		for(Segment si : this.getEdgeList()){
+			dist = si.dist(s);
+			if(dist < min_dist){
+				min_dist = dist;
+			}
+		}
+		return min_dist;
+	}
+	
+	/**
+	 * The shortest distance between this rectangle
+	 * and the given point.
+	 * </br>
+	 * The distance is the shortest distance between 
+	 * the given point and the rectangle edges.
+	 */
+	public double dist(Point p){
+		double min_dist = INF;
+		double dist;
+		for(Segment si : this.getEdgeList()){
+			dist = si.dist(p.x, p.y);
+			if(dist < min_dist){
+				min_dist = dist;
+			}
+		}
+		return min_dist;
+	}
+	
+	/**
+	 * Return the four vertexes of this rectangle
+	 * as coordinate points.
 	 */
 	public List<Point> getVertexList(){
 		List<Point> corners = new ArrayList<Point>();
-		Point p1 = new Point(minX, maxY);
-		Point p2 = new Point(maxX, maxY);
-		Point p3 = new Point(minX, minY);
-		Point p4 = new Point(maxX, minY);
+		Point p1 = new Point(min_x, max_y);
+		Point p2 = new Point(max_x, max_y);
+		Point p3 = new Point(min_x, min_y);
+		Point p4 = new Point(max_x, min_y);
 		corners.add(p1);	corners.add(p2);
 		corners.add(p3);	corners.add(p4);
 		
@@ -218,16 +270,31 @@ public class Rectangle implements Serializable {
 	}
 	
 	/**
+	 * Return the four edges of this rectangle
+	 * as line segments.
+	 */
+	public List<Segment> getEdgeList(){
+		List<Segment> edges = new ArrayList<Segment>();
+		Segment e1 = new Segment(min_x, min_y, max_x, min_y); // bottom
+		Segment e2 = new Segment(min_x, min_y, min_x, max_y); // left
+		Segment e3 = new Segment(min_x, max_y, max_x, max_y); // top
+		Segment e4 = new Segment(max_x, min_y, max_x, max_y); // right
+		edges.add(e1); edges.add(e2);
+		edges.add(e3); edges.add(e4);
+		
+		return edges;
+	}
+	
+	/**
 	 * Print this rectangle: System out.
 	 */
 	public void print(){
 		System.out.println("Rectangle:");
-		System.out.format("[(%.2f,%.2f) (%.2f,%.2f)]",minX,maxY,maxX,maxY);
+		System.out.format("[(%.2f,%.2f) (%.2f,%.2f)]",min_x,max_y,max_x,max_y);
 		System.out.println();
-		System.out.format("[(%.2f,%.2f) (%.2f,%.2f)]",minX,minY,maxX,minY);
+		System.out.format("[(%.2f,%.2f) (%.2f,%.2f)]",min_x,min_y,max_x,min_y);
 		System.out.println();
 		System.out.println("Area: " + area());
 		System.out.println("Perimeter: " + perimeter());
 	}
-
 }

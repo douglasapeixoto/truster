@@ -116,12 +116,11 @@ public class Grid implements Serializable {
 	 */
 	public List<Integer> getOverlappingRectangles(Rectangle r){
 		List<Integer> posList = new ArrayList<Integer>();
-		int i=0;
-		for(Rectangle rec : gridList){
+		for(int i=0; i<gridList.size(); i++){
+			Rectangle rec = gridList.get(i);
 			if(rec.overlap(r)){
 				posList.add(i);
 			}
-			i++;
 		}
 		return posList;
 	}
@@ -134,8 +133,8 @@ public class Grid implements Serializable {
 	public List<Integer> getOverlappingRectangles(Segment s) {
 		List<Integer> posList = new ArrayList<Integer>();
 		for(int i=0; i<gridList.size(); i++){
-			Rectangle ri = gridList.get(i);
-			if(ri.overlap(s)){
+			Rectangle r = gridList.get(i);
+			if(r.overlap(s)){
 				posList.add(i);
 			}
 		}
@@ -207,13 +206,13 @@ public class Grid implements Serializable {
 			for(int x=0; x<sizeX; x++){
 				int index = y*sizeX + x;
 				Rectangle r = gridList.get(index);
-				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",r.minX,r.maxY,r.maxX,r.maxY);
+				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",r.min_x,r.max_y,r.max_x,r.max_y);
 			}	
 			System.out.println();
 			for(int x=0; x<sizeX; x++){
 				int index = y*sizeX + x;
 				Rectangle r = gridList.get(index);
-				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",r.minX,r.minY,r.maxX,r.minY);
+				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",r.min_x,r.min_y,r.max_x,r.min_y);
 			}
 			System.out.println("\n");
 		}

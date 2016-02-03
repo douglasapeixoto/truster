@@ -11,46 +11,49 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.storage.StorageLevel;
+import org.apache.spark.util.SizeEstimator;
 
 import scala.Tuple2;
 import uq.fs.HDFSFileService;
 import uq.spark.EnvironmentVariables;
-import uq.spatial.STSegment;
+import uq.spatial.Trajectory;
 
 /**
  * Pair RDD to keep track of trajectories across partitions.
- * Pairs: <Trajectory Id, Grid index set>.
+ * Pairs: <Trajectory Id, Pages Set>.
  * 
  * @author uqdalves
  *
  */
 @SuppressWarnings("serial")
-public class TrajectoryTrackTable implements Serializable, EnvironmentVariables {
+public class TrajectoryTrackTableSub implements Serializable, EnvironmentVariables {
 	/**
 	 * The RDD of this table object hash table: 
-	 * (Trajectory ID, Set of grid index)
+	 * (Trajectory ID, Set of {PageIndex})
 	 */
 	private JavaPairRDD<String, HashSet<Integer>> trajectoryTrackTableRDD = null;
 	
 	/**
 	 * Build the Trajectory Track table (TTT). 
 	 * </br>
-	 * Assign each trajectory to a set of grid indexes
-	 * it overlaps with. 
+	 * Assign each trajectory to a set of page 
+	 * indexes (VSI, TPI) it overlaps with. 
 	 * </br>
 	 * Build a RDD with key-value pairs:
-	 * (TrajectoryID, Set of grid index)
+	 * (TrajectoryID, PageIndexSet = {(VSI,TPI)})
 	 */
 	public void build(
-			final JavaPairRDD<Integer, STSegment> segmentToGridIndexRDD){	
-		// Map segments to overlapping grids.
-		// Map each pair (Grid index, Segment) to (TrajectoryID, Grid index set)
-		mapSegmentsToGridIndexSet(segmentToGridIndexRDD);
+			final JavaPairRDD<Integer, Trajectory> trajectoryToPageIndexRDD){	
+		// Map trajectories to overlapping pages.
+		// Map each pair (PageIndex, Sub-Trajectory) to (TrajectoryID, PageIndexSet)
+		trajectoryTrackTableRDD = 
+			mapTrajectoryToPageIndexSet(trajectoryToPageIndexRDD);
 		trajectoryTrackTableRDD.setName("TrajectoryTrackTable");
-		trajectoryTrackTableRDD.persist(STORAGE_LEVEL);
+		trajectoryTrackTableRDD.persist(STORAGE_LEVEL_TTT);
 	}
-
+	
 	/**
 	 * Persist this table object, set in the specified Storage Level:
 	 * MEMORY_AND_DISK, MEMORY_ONLY, DISK_ONLY, etc.
@@ -76,8 +79,8 @@ public class TrajectoryTrackTable implements Serializable, EnvironmentVariables 
 	}
 	
 	/**
-	 * Return all grid indexes for a given trajectory.
-	 * Filter all grid indexes that contain the given trajectory.
+	 * Return all page indexes for a given trajectory.
+	 * Filter all page indexes that contain the given trajectory.
 	 * 
 	 * @return Return a set of partition page Indexes <VSI = PivotID, TPI = TimePage>.
 	 */
@@ -98,12 +101,12 @@ public class TrajectoryTrackTable implements Serializable, EnvironmentVariables 
 	}
 
 	/**
-	 * Return all grid indexes for a given trajectory set.
+	 * Return all page indexes for a given trajectory set.
 	 * </br>
-	 * Collect all grid indexes that contain any of the 
+	 * Collect all pages indexes that contain any of the 
 	 * trajectories in the set.
 	 * 
-	 * @return Return a set of grid indexes.
+	 * @return Return a set of Page Indexes (VSI = PivotID, TPI = TimePage).
 	 */
 	public HashSet<Integer> collectIndexListByTrajectoryId(
 			final Collection<String> trajectoryIdSet){
@@ -115,7 +118,6 @@ public class TrajectoryTrackTable implements Serializable, EnvironmentVariables 
 				}
 				// collect and merge tuple values
 			}).values();
-		
 		HashSet<Integer> indexSet = new HashSet<Integer>();
 		if(filteredRDD.isEmpty()){
 			// return empty
@@ -123,9 +125,8 @@ public class TrajectoryTrackTable implements Serializable, EnvironmentVariables 
 		} else {
 			indexSet = 
 				filteredRDD.reduce(new Function2<HashSet<Integer>, HashSet<Integer>, HashSet<Integer>>() {
-					public HashSet<Integer> call(
-							HashSet<Integer> indexSet1, 
-							HashSet<Integer> indexSet2) throws Exception {
+					public HashSet<Integer> call(HashSet<Integer> indexSet1, 
+												 HashSet<Integer> indexSet2) throws Exception {
 						indexSet1.addAll(indexSet2);
 						return indexSet1;
 					}
@@ -135,7 +136,7 @@ public class TrajectoryTrackTable implements Serializable, EnvironmentVariables 
 	}
 
 	/**
-	 * Count the number of grids by trajectory ID.
+	 * Count the number of pages by trajectory ID.
 	 * 
 	 * @return Return a pair RDD from trajectory IDs 
 	 * to number of pages.
@@ -159,7 +160,7 @@ public class TrajectoryTrackTable implements Serializable, EnvironmentVariables 
 	
 	/**
 	 * Return a vector with some statistical information about
-	 * the number of grids per trajectory in this RDD.
+	 * the number of pages per trajectory in this RDD.
 	 * 
 	 * @return A double vector containing the mean: [0], min: [1],
 	 * max: [2], and std: [3] number of pages per trajectory
@@ -225,27 +226,63 @@ public class TrajectoryTrackTable implements Serializable, EnvironmentVariables 
 		info.add("Max. Pages per Trajectory: " + tupleInfo[2]);
 		info.add("Std. Pages per Trajectory: " + tupleInfo[3]);
 
+		/*info.addAll(
+				trajectoryTrackTableRDD.map(new Function<Tuple2<String,PageIndexSet>, String>() {
+			public String call(Tuple2<String, PageIndexSet> tuple) throws Exception {
+				String info = tuple._1 + ": " + tuple._2.size() + " pages.";
+				return info;
+			}
+		}).collect());*/
+
 		// save to hdfs
 		HDFSFileService hdfs = new HDFSFileService();
 		hdfs.saveStringListHDFS(info, "trajectory-track-table-info");
 	}
+	
+	/**
+	 * Print the table: System out.
+	 */
+	public void print(){
+		System.out.println();
+		System.out.println("Trajectory Track Table: [Grid IDs]");
+		trajectoryTrackTableRDD.foreach(new VoidFunction<Tuple2<String,HashSet<Integer>>>() {
+			public void call(Tuple2<String, HashSet<Integer>> tuple) throws Exception {
+				// print script
+				String script = tuple._1 + ": [";
+				for(Integer index : tuple._2){
+					script += "("+index.toString() + "),";
+				}
+				script = script.substring(0,script.length()-1);
+				script += "]";
+				System.out.println(script);
+				
+			}
+		});
+		System.out.println();
+	}
 
+	/**
+	 * Estimative of this RDD size.
+	 */
+	public long estimateSize(){
+		return SizeEstimator.estimate(trajectoryTrackTableRDD);
+	}
+	
 	/**
 	 * A MapRedcuce/Aggregate function to assign each trajectory to its 
 	 * overlapping pages.
 	 * </br>
 	 * Return a RDD of pairs: (TrajectoryID, Set of PagesIndex)
 	 */
-	private JavaPairRDD<String, HashSet<Integer>> mapSegmentsToGridIndexSet(
-			final JavaPairRDD<Integer, STSegment> segmentToGridIndex){
+	private JavaPairRDD<String, HashSet<Integer>> mapTrajectoryToPageIndexSet(
+			final JavaPairRDD<Integer, Trajectory> trajectoryToPageIndexRDD){
 		
-		// map each segment to a pair (TrajectoryID, Grid index)
-		JavaPairRDD<String, Integer> idToGridIndexSetRDD = 
-				segmentToGridIndex.mapToPair(
-				new PairFunction<Tuple2<Integer,STSegment>, String, Integer>() {
-			@Override
-			public Tuple2<String, Integer> call(Tuple2<Integer, STSegment> tuple) throws Exception {
-				return new Tuple2<String, Integer>(tuple._2.parentId, tuple._1);
+		// map each sub-trajectory to a pair (TrajectoryID, PageIndex)
+		JavaPairRDD<String, Integer> idToPageIndexSetRDD = 
+				trajectoryToPageIndexRDD.mapToPair(
+						new PairFunction<Tuple2<Integer,Trajectory>, String, Integer>() {
+			public Tuple2<String, Integer> call(Tuple2<Integer, Trajectory> tuple) throws Exception {
+				return new Tuple2<String, Integer>(tuple._2.id, tuple._1);
 			}
 		});
 		
@@ -254,25 +291,23 @@ public class TrajectoryTrackTable implements Serializable, EnvironmentVariables 
 		// aggregate functions
 		Function2<HashSet<Integer>, Integer, HashSet<Integer>> seqFunc = 
 				new Function2<HashSet<Integer>, Integer, HashSet<Integer>>() {
-			@Override
 			public HashSet<Integer> call(HashSet<Integer> set, Integer index) throws Exception {
 				set.add(index);
 				return set;
 			}
-		};
+		}; 
 		Function2<HashSet<Integer>, HashSet<Integer>, HashSet<Integer>> combFunc = 
 				new Function2<HashSet<Integer>, HashSet<Integer>, HashSet<Integer>>() {
-			@Override
 			public HashSet<Integer> call(HashSet<Integer> set1, HashSet<Integer> set2) throws Exception {
 				set1.addAll(set2);
 				return set1;
 			}
 		};
-
 		// aggregates the index sets by trajectory ID
 		trajectoryTrackTableRDD = 
-				idToGridIndexSetRDD.aggregateByKey(emptySet, seqFunc, combFunc);
+				idToPageIndexSetRDD.aggregateByKey(emptySet, NUM_PARTITIONS_TTT, seqFunc, combFunc);
 			
 		return trajectoryTrackTableRDD;
 	}
+
 }
