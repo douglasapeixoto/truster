@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A grid object made of n x m rectangles.
+ * A grid object made of n x m cells.
  * </br>
  * The grid is constructed from left to right, 
  * bottom to top. The first position in the grid
@@ -16,45 +16,45 @@ import java.util.List;
  */
 @SuppressWarnings("serial")
 public class Grid implements Serializable {
-	// grid rectangles
-	private List<Rectangle> gridList;
+	// grid cells
+	private List<Rectangle> cellsList;
 	// grid endpoint coordinates
-	public double minX;
-	public double minY;
-	public double maxX;
-	public double maxY;
-	// grid dimensions (number of rectangles)
-	public int sizeX;
-	public int sizeY;
+	public double min_x;
+	public double min_y;
+	public double max_x;
+	public double max_y;
+	// grid dimensions (number of cells)
+	public int size_x;
+	public int size_y;
 	
 	/**
-	 * Create a new grid of (n x m) rectangles for the given dimensions. 
+	 * Create a new grid of (n x m) cells for the given dimensions. 
 	 */
 	public Grid(int n, int m, double minX, double minY, double maxX, double maxY){
-		this.minX = minX;
-		this.minY = minY;
-		this.maxX = maxX;
-		this.maxY = maxY;
-		this.sizeX = n;
-		this.sizeY = m;
-		gridList = new ArrayList<Rectangle>(sizeX*sizeY);
+		this.min_x = minX;
+		this.min_y = minY;
+		this.max_x = maxX;
+		this.max_y = maxY;
+		this.size_x = n;
+		this.size_y = m;
+		cellsList = new ArrayList<Rectangle>(size_x*size_y);
 		// build the grid
 		build();
 	}
 	
 	/**
-	 * Generates the grid partitions.
+	 * Generates the grid cells.
 	 */
 	private void build() {
 		// increments
-		double incrX = (maxX-minX) / sizeX;
-		double incrY = (maxY-minY) / sizeY;
-		double currentX, currentY=minY;
-		currentY=minY;
-		for(int y=0; y<sizeY; y++){	
-			currentX=minX;
-			for(int x=0; x<sizeX; x++){
-				gridList.add(new Rectangle(currentX, currentY, currentX+incrX, currentY+incrY));
+		double incrX = (max_x-min_x) / size_x;
+		double incrY = (max_y-min_y) / size_y;
+		double currentX, currentY=min_y;
+		currentY=min_y;
+		for(int y=0; y<size_y; y++){	
+			currentX=min_x;
+			for(int x=0; x<size_x; x++){
+				cellsList.add(new Rectangle(currentX, currentY, currentX+incrX, currentY+incrY));
 				currentX += incrX;
 			}
 			currentY += incrY;
@@ -62,62 +62,80 @@ public class Grid implements Serializable {
 	}
 	
 	/**
-	 * The list of rectangles in this grid.
+	 * The list of cells in this grid.
 	 */
-	public List<Rectangle> getRectangles(){
-		return gridList;
+	public List<Rectangle> getCells(){
+		return cellsList;
 	}
 	
 	/**
-	 * Return the i-th rectangle in this grid.
+	 * Return the i-th cell in this grid.
 	 */
 	public Rectangle get(final int i) {
 		assert(i>=0 && i<size())
 		: "Grid index out of bound.";
-		return gridList.get(i);
+		return cellsList.get(i);
 	}
 	
 	/**
-	 * Return the rectangle in this position [x,y] 
+	 * Return the cell in the position [x,y] 
 	 * in the grid. Grid x and y position start 
 	 * from (0,0).
 	 */
 	public Rectangle get(final int x, final int y) {
-		assert(x>=0 && x<sizeX && y>=0 && y<sizeY)
+		assert(x>=0 && x<size_x && y>=0 && y<size_y)
 		: "Grid index out of bound.";
-		int index = y*sizeX + x;
-		return gridList.get(index);
+		int index = y*size_x + x;
+		return cellsList.get(index);
 	}
 	
 	/**
-	 * Number of rectangles in this grid.
+	 * Number of cells in this grid.
 	 */
 	public int size(){
-		return gridList.size();
+		return cellsList.size();
 	}
 	
 	/**
 	 * The total area covered by this grid.
 	 */
 	public double area(){
-		return (maxX-minX)*(maxY-minY);
+		return (max_x-min_x)*(max_y-min_y);
 	}
 	
 	/**
 	 * The total perimeter of this grid.
 	 */
 	public double perimeter(){
-		return 2*(maxX-minX)+2*(maxY-minY);
+		return 2*(max_x-min_x)+2*(max_y-min_y);
 	}
 	
 	/**
-	 * Return the positions (index) of the rectangles in this grid that
+	 * The height (Y axis) of the cells
+	 * in this grid.
+	 */
+	public double cellsHeight(){
+		double height = (max_y - min_y) / size_y;
+		return height;
+	}
+	
+	/**
+	 * The width (X axis) of the cells
+	 * in this grid.
+	 */
+	public double cellsWidth(){
+		double width = (max_x - min_x) / size_x;
+		return width;
+	}
+
+	/**
+	 * Return the positions (index) of the cells in this grid that
 	 * overlap with the given rectangular area. 
 	 */
-	public List<Integer> getOverlappingRectangles(Rectangle r){
+	public List<Integer> getOverlappingCells(Rectangle r){
 		List<Integer> posList = new ArrayList<Integer>();
-		for(int i=0; i<gridList.size(); i++){
-			Rectangle rec = gridList.get(i);
+		for(int i=0; i<cellsList.size(); i++){
+			Rectangle rec = cellsList.get(i);
 			if(rec.overlap(r)){
 				posList.add(i);
 			}
@@ -126,14 +144,14 @@ public class Grid implements Serializable {
 	}
 
 	/**
-	 * Return the positions (index) of the rectangles in this grid that
+	 * Return the positions (index) of the cells in this grid that
 	 * overlaps with the given line segment, that is, the id of the
 	 * rectangles that either contains or intersect the line segment
 	 */
-	public List<Integer> getOverlappingRectangles(Segment s) {
+	public List<Integer> getOverlappingCells(Segment s) {
 		List<Integer> posList = new ArrayList<Integer>();
-		for(int i=0; i<gridList.size(); i++){
-			Rectangle r = gridList.get(i);
+		for(int i=0; i<cellsList.size(); i++){
+			Rectangle r = cellsList.get(i);
 			if(r.overlap(s)){
 				posList.add(i);
 			}
@@ -142,11 +160,24 @@ public class Grid implements Serializable {
 	}
 	
 	/**
-	 * Return the positions (index) of the adjacent rectangles
+	 * Return the position (index) of the rectangle in this grid that
+	 * overlaps with the given point, that is, the id of the
+	 * rectangle that contains or touches the point. If the point
+	 * is a border point, return the first occurrence in the grid.
+	 */
+	public int getOverlappingCell(Point p) {
+		int xi = (int) ((p.x - min_x) / cellsWidth());
+		int yi = (int) ((p.y - min_y) / cellsHeight());
+		int index = yi*size_x + xi;
+		return index;
+	}
+
+	/**
+	 * Return the positions (index) of the adjacent cells
 	 * from the given grid position. 
 	 */
-	public List<Integer> getAdjacentRectangles(final int x, final int y){
-		assert(x>=0 && x<sizeX && y>=0 && y<sizeY)
+	public List<Integer> getAdjacentCells(final int x, final int y){
+		assert(x>=0 && x<size_x && y>=0 && y<size_y)
 		: "Grid index out of bound.";
 		
 		List<Integer> posList = new ArrayList<Integer>();
@@ -155,42 +186,42 @@ public class Grid implements Serializable {
 
 		adjX = x-1; adjY = y-1;
 		if(adjX>=0 && adjY>=0){
-			index = adjY*sizeX + adjX;
+			index = adjY*size_x + adjX;
 			posList.add(index);
 		}
 		adjX = x; adjY = y-1;
 		if(adjY>=0){
-			index = adjY*sizeX + adjX;
+			index = adjY*size_x + adjX;
 			posList.add(index);
 		}
 		adjX = x+1; adjY = y-1;
-		if(adjX<sizeX && adjY>=0){
-			index = adjY*sizeX + adjX;
+		if(adjX<size_x && adjY>=0){
+			index = adjY*size_x + adjX;
 			posList.add(index);
 		}
 		adjX = x-1; adjY = y;
 		if(adjX>=0){
-			index = adjY*sizeX + adjX;
+			index = adjY*size_x + adjX;
 			posList.add(index);
 		}
 		adjX = x+1; adjY = y;
-		if(adjX<sizeX){
-			index = adjY*sizeX + adjX;
+		if(adjX<size_x){
+			index = adjY*size_x + adjX;
 			posList.add(index);
 		}
 		adjX = x-1; adjY = y+1;
-		if(adjX>=0 && adjY<sizeY){
-			index = adjY*sizeX + adjX;
+		if(adjX>=0 && adjY<size_y){
+			index = adjY*size_x + adjX;
 			posList.add(index);
 		}
 		adjX = x; adjY = y+1;
-		if(adjY<sizeY){
-			index = adjY*sizeX + adjX;
+		if(adjY<size_y){
+			index = adjY*size_x + adjX;
 			posList.add(index);
 		}
 		adjX = x+1; adjY = y+1;
-		if(adjX<sizeX && adjY<sizeY){
-			index = adjY*sizeX + adjX;
+		if(adjX<size_x && adjY<size_y){
+			index = adjY*size_x + adjX;
 			posList.add(index);
 		}
 		
@@ -201,17 +232,17 @@ public class Grid implements Serializable {
 	 * Print grid dimensions: system out
 	 */
 	public void print(){
-		System.out.println("Grid Dimensions: [" + sizeX + " x " + sizeY + "]\n");
-		for(int y=sizeY-1; y>=0; y--){
-			for(int x=0; x<sizeX; x++){
-				int index = y*sizeX + x;
-				Rectangle r = gridList.get(index);
+		System.out.println("Grid Dimensions: [" + size_x + " x " + size_y + "]\n");
+		for(int y=size_y-1; y>=0; y--){
+			for(int x=0; x<size_x; x++){
+				int index = y*size_x + x;
+				Rectangle r = cellsList.get(index);
 				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",r.min_x,r.max_y,r.max_x,r.max_y);
 			}	
 			System.out.println();
-			for(int x=0; x<sizeX; x++){
-				int index = y*sizeX + x;
-				Rectangle r = gridList.get(index);
+			for(int x=0; x<size_x; x++){
+				int index = y*size_x + x;
+				Rectangle r = cellsList.get(index);
 				System.out.format("[(%.2f,%.2f)(%.2f,%.2f)] ",r.min_x,r.min_y,r.max_x,r.min_y);
 			}
 			System.out.println("\n");

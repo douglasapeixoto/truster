@@ -82,7 +82,7 @@ public class BenchmarkTest implements Serializable, EnvironmentVariables, GeoInt
 				new QueryProcessingModuleSeg(partitionsSegRDD, trackTableSeg, grid);
 		
 		/*****
-		 * QUERY PROCESSING - SEGMENT - TRUSTER QUERY PROCESSING MODULE 
+		 * QUERY PROCESSING - SUB-TRAJECTORY - TRUSTER QUERY PROCESSING MODULE 
 		 *****/
 		QueryProcessingModuleSub queryModuleSub = 
 				new QueryProcessingModuleSub(partitionsSubRDD, trackTableSub, grid);

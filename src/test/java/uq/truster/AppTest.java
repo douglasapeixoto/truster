@@ -13,7 +13,7 @@ import uq.spatial.Segment;
 public class AppTest {
 	
 	public static void main(String[] args) {
-		Grid grid = new Grid(5, 3, 0, 0, 5, 3);
+		/*Grid grid = new Grid(5, 3, 0, 0, 5, 3);
 		grid.print();
 		System.out.println();
 		
@@ -25,7 +25,12 @@ public class AppTest {
 		System.out.println();
 		for(Integer i : posList){
 			System.out.println(i);
-		}
+		}*/
+
+		Grid grid = new Grid(4, 4, 0, 0, 40, 40);
+		int pos = grid.getOverlappingCell(new Point(25, 15));
+		System.out.println(pos);
+
 	}
 
 	/**

@@ -81,16 +81,9 @@ public class SpatialPartitionModuleSub implements Serializable, EnvironmentVaria
 					// split the trajectory into sub-trajectories
 					// for each page it intersects with
 					for(Point point : trajectory.getPointsList()){
-						// current point indexes
-						int index = 1; // grid index
-							
-						// find the grid containing this point
-						for(int i=0; i<grid.size(); i++){
-							Rectangle r = grid.get(i);
-							if(r.contains(point)){
-								index = i;
-							}
-						}
+						// current point index
+						// find the cell in the grid containing this point
+						int index = grid.getOverlappingCell(point);
 						point.gridId = index;
 						
 						// check for boundary objects
@@ -100,7 +93,7 @@ public class SpatialPartitionModuleSub implements Serializable, EnvironmentVaria
 							sub.addPoint(point);
 						} 
 						// boundary segment
-						else { 
+						else {
 							// the current sub-trajectory also receives this boundary point
 							sub.addPoint(point);
 

@@ -79,7 +79,7 @@ public class QueryProcessingModuleSeg implements Serializable {
 		System.out.println("\n[TRUSTER] Running Spatial-Temporal Selection..\n");
 		
 		// get the rectangles in the grid that overlap with the query area
-		final List<Integer> idList = grid.getOverlappingRectangles(query);
+		final List<Integer> idList = grid.getOverlappingCells(query);
 		
 		/**
 		 * FILTER STEP:
@@ -122,7 +122,13 @@ public class QueryProcessingModuleSeg implements Serializable {
 		/**
 		 * POST-PROCESSING:
 		 */
-		List<Trajectory> resultList = postProcess(refineSegmentsRDD);
+		// List<Trajectory> resultList = postProcess(refineSegmentsRDD);
+		
+		/**
+		 * POST-PROCESSING:
+		 * Simpler version, without removing duplicates.
+		 */
+		List<Trajectory> resultList = postProcessSimpler(refineSegmentsRDD);
 		
 		return resultList;
 	}
@@ -144,11 +150,11 @@ public class QueryProcessingModuleSeg implements Serializable {
 		// check the grid rectangles that overlaps with the query 
 		final HashSet<Integer> gridIdSet = 
 				getOverlappingRectangles(query);
-System.out.println("Num. Overlap. Grids with Query (1): " + gridIdSet.size());		
+
 		// collect the trajectories inside those grid partitions (whole trajectories)
 		JavaRDD<Trajectory> trajectoryRDD = 
 				collector.collectTrajectoriesByPartitionIndex(gridIdSet, t0, t1);
-System.out.println("Num. Trajectories Filtered (1): " + trajectoryRDD.count());
+
 		/**
 		 * FIRST REFINEMENT:
 		 * Get the kNN inside the partitions containing the query trajectory
@@ -157,7 +163,7 @@ System.out.println("Num. Trajectories Filtered (1): " + trajectoryRDD.count());
 		// map each trajectory to a NN object
 		List<NearNeighbor> candidatesList = new LinkedList<NearNeighbor>();
 		candidatesList = getCandidatesNN(trajectoryRDD, candidatesList, query, t0, t1);
-System.out.println("Candidate List Size (1): " + candidatesList.size());
+
 		/**
 		 * SECOND FILTER:
 		 */
@@ -174,14 +180,13 @@ System.out.println("Candidate List Size (1): " + candidatesList.size());
 		// get the MBR of the circle composed by the farthest distance 
 		// and farthest point
 		Circle c = getFarthestPointCircle(query, knn);
-System.out.println("Query Circle: ");
-c.toString();
+
 		// check the grid rectangles that overlaps with the query,
 		// except those already retrieved
 		final List<Integer> extendGridIdSet = 
-				grid.getOverlappingRectangles(c.mbr());
+				grid.getOverlappingCells(c.mbr());
 		extendGridIdSet.removeAll(gridIdSet);
-System.out.println("Num. Overlap. Grids with Circle MBR (2): " + extendGridIdSet.size());	
+
 		/**
 		 * SECOND REFINEMENT:
 		 */
@@ -190,10 +195,8 @@ System.out.println("Num. Overlap. Grids with Circle MBR (2): " + extendGridIdSet
 			// collect the new trajectories
 			JavaRDD<Trajectory> extendTrajectoryRDD = 
 				collector.collectTrajectoriesByPartitionIndex(extendGridIdSet, t0, t1);
-System.out.println("Num. Trajectories Filtered (2): " + extendTrajectoryRDD.count());
 			// refine and update the candidates list
 			candidatesList = getCandidatesNN(extendTrajectoryRDD, candidatesList, query, t0, t1);
-System.out.println("Candidate List Size (2): " + candidatesList.size());
 		}
 		
 		// collect result
@@ -262,6 +265,45 @@ System.out.println("Candidate List Size (2): " + candidatesList.size());
 
 		return selectList;			
 	}
+
+	/**
+	 * The post-processing phase of the selection query.
+	 * </br>
+	 * Aggregate segments by key into trajectories.
+	 * </br>
+	 * Do not remove duplicate points, simply group
+	 * segments with same key into a trajectory.
+	 */
+	private List<Trajectory> postProcessSimpler(
+			final JavaPairRDD<String, STSegment> subTrajectoryRDD){
+		// an empty trajectory to start aggregating
+		Trajectory emptyTrajectory = new Trajectory();
+		// group segments belonging to the same parent trajectory
+		Function2<Trajectory, STSegment, Trajectory> seqFunc = 
+				new Function2<Trajectory, STSegment, Trajectory>() {
+			public Trajectory call(Trajectory trajectory, STSegment segment) throws Exception {
+				trajectory.addSegment(segment);
+				return trajectory;
+			}
+		};
+		Function2<Trajectory, Trajectory, Trajectory> combFunc = 
+				new Function2<Trajectory, Trajectory, Trajectory>() {
+			public Trajectory call(Trajectory t1, Trajectory t2) throws Exception {
+				return t1.merge(t2);
+			}
+		};
+		// aggregate segments by key, and post-process
+		List<Trajectory> selectList =
+			subTrajectoryRDD.aggregateByKey(emptyTrajectory, seqFunc, combFunc)
+				.values().map(new Function<Trajectory, Trajectory>() {
+					public Trajectory call(Trajectory t) throws Exception {
+						t.sort();
+						return t;
+					}
+			}).collect();
+
+		return selectList;			
+	}
 	
 	/**
 	 * Return the positions (index) of the rectangles in the grid that
@@ -274,7 +316,7 @@ System.out.println("Candidate List Size (2): " + candidatesList.size());
 			Point p1 = t.get(i);
 			Point p2 = t.get(i+1);
 			Segment s = new Segment(p1.x, p1.y, p2.x, p2.y);
-			posSet.addAll(grid.getOverlappingRectangles(s));
+			posSet.addAll(grid.getOverlappingCells(s));
 		}
 		return posSet;
 	}

@@ -1,6 +1,7 @@
 package uq.truster.query;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -8,11 +9,17 @@ import java.util.List;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
+ 
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
 
+import scala.Tuple2;
 import uq.spatial.Circle;
 import uq.spatial.Grid;
 import uq.spatial.Point;
+import uq.spatial.STRectangle;
 import uq.spatial.Segment;
 import uq.spatial.Trajectory;
 import uq.spatial.distance.EDwPDistanceCalculator;
@@ -35,6 +42,7 @@ import uq.truster.partition.TrajectoryTrackTableSub;
 public class QueryProcessingModuleSub implements Serializable {
 	private Grid grid;
 	private TrajectoryCollectorSub collector;
+	private JavaPairRDD<Integer, PartitionSub> partitionsRDD;
 	
 	// distance measure
 	private TrajectoryDistanceCalculator edwp = 
@@ -45,6 +53,11 @@ public class QueryProcessingModuleSub implements Serializable {
 	private NeighborComparator<NearNeighbor> nnComparator = 
 			new NeighborComparator<NearNeighbor>();
 	
+	// log info
+	/*private static int TOTAL_PARTITIONS_FILTERED = 0;
+	private static int TOTAL_TRAJ_FILTERED  = 0;	
+	private static int TOTAL_TRAJ_COLLECTED = 0;
+	*/
 	/**
 	 * Set the data partition RDD and the grid used to process queries.
 	 */
@@ -53,10 +66,132 @@ public class QueryProcessingModuleSub implements Serializable {
 			final TrajectoryTrackTableSub trackTable,
 			final Grid grid) {
 		this.grid = grid;
+		this.partitionsRDD = partitionsRDD;
 		// set up trajectory collector
 		collector = new TrajectoryCollectorSub(partitionsRDD, trackTable);
 	}
 	
+	/**
+	 * Given a spatial-temporal query region (spatial-temporal rectangle),
+	 * returns from the partition RDD all sub-trajectory (post-processed 
+	 * sub-trajectories) that satisfy the query, that is, all sub-trajectories
+	 * covered by the query area within the query time interval.
+	 * 
+	 * @return A list of sub-trajectory that satisfy the query.
+	 **/
+	public List<Trajectory> processSelectionQuery(
+			final STRectangle query){
+		System.out.println("\n[TRUSTER] Running Spatial-Temporal Selection..\n");
+		
+		// get the rectangles in the grid that overlap with the query area
+		final List<Integer> idList = grid.getOverlappingCells(query);
+		
+		/**
+		 * FILTER STEP:
+		 */
+		// filter partitions that overlap/cover the query area
+		// use Spark filter function
+		JavaPairRDD<Integer, PartitionSub> filterRDD = 
+			partitionsRDD.filter(new Function<Tuple2<Integer,PartitionSub>, Boolean>() {
+				public Boolean call(Tuple2<Integer, PartitionSub> partition) throws Exception {
+					return idList.contains(partition._1);
+				}
+			});
+
+		// collection log
+		/*System.out.println("Collect Trajectories by Id.");
+		System.out.println("Total Partitions: " + partitionsRDD.count());
+		System.out.println("Total Partitions Filtered: " + filterRDD.count());
+		//ids of trajectories filtered from the tree inside the partitions (filter step)
+		int numFilteredTrajectories = 
+			filterRDD.flatMap(new FlatMapFunction<Tuple2<Integer,PartitionSub>, String>() {
+				public Iterable<String> call(Tuple2<Integer, PartitionSub> partition)
+						throws Exception {
+					HashSet<String> idSet = new HashSet<String>();
+					List<Trajectory> candidatesList =
+							partition._2.getSubTrajectoryTree().getTrajectoriesByTime(query.t1, query.t2);
+					for(Trajectory t : candidatesList){
+						idSet.add(t.id);
+					}
+					return idSet;
+				}
+			}).distinct().collect().size();
+		//get the number of trajectories filtered (TP+FP)		
+		System.out.println("Total Trajectories Filtered (TP+FP): " + numFilteredTrajectories);
+		TOTAL_TRAJ_FILTERED += numFilteredTrajectories;	
+		TOTAL_PARTITIONS_FILTERED += filterRDD.count();
+		*/		
+		
+		/**
+		 * REFINEMENT STEP:
+		 */
+		// map each partition to a list of sub-trajectories that satisfy the query
+		JavaPairRDD<String, Trajectory> refinedSubTrajectoriesRDD = 
+			filterRDD.flatMapToPair(new PairFlatMapFunction<Tuple2<Integer,PartitionSub>, String, Trajectory>() {
+				public Iterable<Tuple2<String, Trajectory>> call(
+						Tuple2<Integer, PartitionSub> partition) throws Exception {
+					List<Tuple2<String, Trajectory>> tList = 
+							new ArrayList<Tuple2<String, Trajectory>>();
+					List<Trajectory> candidatesList =
+							partition._2.getSubTrajectoryTree().getTrajectoriesByTime(query.t1, query.t2);
+					for(Trajectory t : candidatesList){
+						// refine: if at least one point satisfy the query, 
+						// then add the sub-trajectory to the result list
+						if(t.timeIni() > query.t2 || t.timeEnd() < query.t1){continue;}
+						for(Point p : t.getPointsList()){
+							if(query.contains(p)){
+								tList.add(new Tuple2<String, Trajectory>(t.id, t));
+								break;
+							}
+						}
+					}
+					return tList;
+				}
+			});
+			
+		// get the number of trajectories that satisfy the query (TP)
+		/*int totalTrajectories = 
+			refinedSubTrajectoriesRDD.values().map(new Function<Trajectory, String>() {
+				public String call(Trajectory sub) throws Exception {
+					return sub.id;
+				}
+			}).distinct().collect().size();
+		// collection log
+		System.out.println("Total Trajectories Collected (TP): " + totalTrajectories);
+		TOTAL_TRAJ_COLLECTED += totalTrajectories;
+		System.out.println("TOTAIS: ");
+		System.out.println("TOTAL PARTITIONS FILT.: " + TOTAL_PARTITIONS_FILTERED);
+		System.out.println("TOTAL TRAJ FILT.:  " + TOTAL_TRAJ_FILTERED);
+		System.out.println("TOTAL TRAJ COL.:   " + TOTAL_TRAJ_COLLECTED);
+		System.out.println();			
+		*/	
+		
+		/**
+		 * POST-PROCESSING:
+		 */
+		List<Trajectory> resultList = postProcess(refinedSubTrajectoriesRDD);
+		
+		return resultList;
+	}
+	
+	/**
+	 * NN Query:
+	 * Given a query trajectory Q and a time interval t0 to t1,
+	 * return the Nearest Neighbor (Most Similar Trajectory) 
+	 * from Q, within the interval [t0,t1]. 
+	 */
+	public NearNeighbor processNNQuery(
+			final Trajectory q, 
+			final long t0, final long t1){
+		List<NearNeighbor> result = 
+				processKNNQuery(q, t0, t1, 1);
+		NearNeighbor nn = new NearNeighbor();
+		if(result!=null && !result.isEmpty()){
+			nn = result.get(0);
+		}
+		return nn;
+	}
+
 	/**
 	 * Given a query trajectory Q, a time interval [t0,t1], and a integer K,
 	 * returns from the partition RDD K most nearest neighbor of Q within
@@ -74,11 +209,11 @@ public class QueryProcessingModuleSub implements Serializable {
 		// check the grid rectangles that overlaps with the query 
 		final HashSet<Integer> gridIdSet = 
 				getOverlappingRectangles(query);
-System.out.println("Num. Overlap. Grids with Query (1): " + gridIdSet.size());		
+
 		// collect the trajectories inside those grid partitions (whole trajectories)
 		JavaRDD<Trajectory> trajectoryRDD = 
 				collector.collectTrajectoriesByPartitionIndex(gridIdSet, t0, t1);
-System.out.println("Num. Trajectories Filtered (1): " + trajectoryRDD.count());
+
 		/**
 		 * FIRST REFINEMENT:
 		 * Get the kNN inside the partitions containing the query trajectory
@@ -87,7 +222,7 @@ System.out.println("Num. Trajectories Filtered (1): " + trajectoryRDD.count());
 		// map each trajectory to a NN object
 		List<NearNeighbor> candidatesList = new LinkedList<NearNeighbor>();
 		candidatesList = getCandidatesNN(trajectoryRDD, candidatesList, query, t0, t1);
-System.out.println("Candidate List Size (1): " + candidatesList.size());
+
 		/**
 		 * SECOND FILTER:
 		 */
@@ -101,17 +236,16 @@ System.out.println("Candidate List Size (1): " + candidatesList.size());
 			return candidatesList;
 		}
 		
-		// get the MBR of the circle composed by the farthest distance 
+		// get the circle composed by the farthest distance 
 		// and farthest point
 		Circle c = getFarthestPointCircle(query, knn);
-System.out.println("Query Circle: ");
-c.toString();
+
 		// check the grid rectangles that overlaps with the query,
 		// except those already retrieved
 		final List<Integer> extendGridIdSet = 
-				grid.getOverlappingRectangles(c.mbr());
+				grid.getOverlappingCells(c.mbr());
 		extendGridIdSet.removeAll(gridIdSet);
-System.out.println("Num. Overlap. Grids with Circle MBR (2): " + extendGridIdSet.size());	
+
 		/**
 		 * SECOND REFINEMENT:
 		 */
@@ -120,10 +254,9 @@ System.out.println("Num. Overlap. Grids with Circle MBR (2): " + extendGridIdSet
 			// collect the new trajectories
 			JavaRDD<Trajectory> extendTrajectoryRDD = 
 				collector.collectTrajectoriesByPartitionIndex(extendGridIdSet, t0, t1);
-System.out.println("Num. Trajectories Filtered (2): " + extendTrajectoryRDD.count());
+
 			// refine and update the candidates list
 			candidatesList = getCandidatesNN(extendTrajectoryRDD, candidatesList, query, t0, t1);
-System.out.println("Candidate List Size (2): " + candidatesList.size());
 		}
 		
 		// collect result
@@ -168,7 +301,7 @@ System.out.println("Candidate List Size (2): " + candidatesList.size());
 			Point p1 = t.get(i);
 			Point p2 = t.get(i+1);
 			Segment s = new Segment(p1.x, p1.y, p2.x, p2.y);
-			posSet.addAll(grid.getOverlappingRectangles(s));
+			posSet.addAll(grid.getOverlappingCells(s));
 		}
 		return posSet;
 	}
@@ -212,5 +345,41 @@ System.out.println("Candidate List Size (2): " + candidatesList.size());
 		Collections.sort(currentList, nnComparator);
 		
 		return currentList;
+	}
+	
+	/**
+	 * The post-processing phase of the selection query (not whole).
+	 * </br>
+	 * Aggregate sub-trajectories by key and post-process.
+	 */
+	private List<Trajectory> postProcess(
+			final JavaPairRDD<String, Trajectory> subTrajectoryRDD){
+		// an empty bag of sub-trajectories to start aggregating
+		SubTrajectoryBag emptyObj = new SubTrajectoryBag();
+		// group sub-trajectories belonging to the same parent trajectory
+		Function2<SubTrajectoryBag, Trajectory, SubTrajectoryBag> seqFunc = 
+				new Function2<SubTrajectoryBag, Trajectory, SubTrajectoryBag>() {
+			public SubTrajectoryBag call(SubTrajectoryBag obj, Trajectory t) throws Exception {
+				obj.add(t);
+				return obj;
+			}
+		};
+		Function2<SubTrajectoryBag, SubTrajectoryBag, SubTrajectoryBag> combFunc = 
+				new Function2<SubTrajectoryBag, SubTrajectoryBag, SubTrajectoryBag>() {
+			public SubTrajectoryBag call(SubTrajectoryBag obj1, SubTrajectoryBag obj2) throws Exception {
+				return obj1.merge(obj2);
+			}
+		};
+		// aggregate the sub-trajectories by key, and post-process
+		List<Trajectory> selectList =
+			subTrajectoryRDD.aggregateByKey(emptyObj, seqFunc, combFunc)
+				.values().flatMap(new FlatMapFunction<SubTrajectoryBag, Trajectory>() {
+					public Iterable<Trajectory> call(SubTrajectoryBag bag) throws Exception {
+						// post-process and return
+						return bag.postProcess();
+					}
+			}).collect();
+
+		return selectList;			
 	}
 }

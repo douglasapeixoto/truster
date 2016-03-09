@@ -19,7 +19,7 @@ import uq.spatial.distance.TrajectoryDistanceCalculator;
 * @author uqdalves
 */
 @SuppressWarnings("serial")
-public class EDwP_OLD implements Serializable, TrajectoryDistanceCalculator {
+public class EDwP_V1 implements Serializable, TrajectoryDistanceCalculator {
 
 	public double getDistance(Trajectory t1, Trajectory t2) {
 		// make sure the original trajectories will not be changed
@@ -38,7 +38,7 @@ public class EDwP_OLD implements Serializable, TrajectoryDistanceCalculator {
 	 * Edit Distance with Projections
 	 */
 	private double getEDwP(List<Point> t1, List<Point> t2) {
-		double total_cost_edwp = 0;
+		double edwp_cost = 0;
 		
 		if(t1.size() == 0 && t2.size() == 0){
 			return 0;
@@ -47,74 +47,71 @@ public class EDwP_OLD implements Serializable, TrajectoryDistanceCalculator {
 			return INFINITY;
 		}
 
+		double replacement, coverage;
+		double cost_e1, cost_e2;
+		Point e1p1, e1p2, e2p1, e2p2;
+		Point proj_e1, proj_e2;
 		while(true) {
-			// cost of the replacement
-			double replacement = 0;	
-			double coverage = 0;
-			
-			// Insert and replacement
+			// Segments being edited
 			if (t2.size() == 1 && t1.size() > 1){
-				Point e_p1 = t1.get(0);
-				Point e_p2 = t1.get(1);
-				Point p    = t2.get(0);
+				e1p1 = t1.get(0);
+				e1p2 = t1.get(1);
+				e2p2 = t2.get(0);
 
-				replacement = replacement(e_p1, e_p2, p, p);
-				coverage    = coverage(e_p1, e_p2, p, p);
+				replacement = replacement(e1p1, e1p2, e2p2, e2p2);
+				coverage    = coverage(e1p1, e1p2, e2p2, e2p2);
+				edwp_cost += (replacement * coverage);
 			}
-			// Insert and replacement
 			else if(t1.size() == 1 && t2.size() > 1){			
-				Point e_p1 = t2.get(0);
-				Point e_p2 = t2.get(1);
-				Point p = t1.get(0);
+				e2p1 = t2.get(0);
+				e2p2 = t2.get(1);
+				e1p2 = t1.get(0);
 			
-				replacement = replacement(e_p1, e_p2, p, p);
-				coverage    = coverage(e_p1, e_p2, p, p);
+				replacement = replacement(e2p1, e2p2, e1p2, e1p2);
+				coverage    = coverage(e2p1, e2p2, e1p2, e1p2);
+				edwp_cost += (replacement * coverage);
 			} 
-			// Insert and replacement
 			else if(t1.size() > 1 && t2.size() > 1){
-				Point e1_p1 = t1.get(0);
-				Point e1_p2 = t1.get(1);
-				Point e2_p1 = t2.get(0);
-				Point e2_p2 = t2.get(1);
+				e1p1 = t1.get(0);
+				e1p2 = t1.get(1);
+				e2p1 = t2.get(0);
+				e2p2 = t2.get(1);
 	
-				// get the coordinates of p_ins (projections)
-				Point p_ins_e1 = projection(e1_p1, e1_p2, e2_p2);
-				Point p_ins_e2 = projection(e2_p1, e2_p2, e1_p2);
-				
-				// test which replacement is better
-				double replace_e1 = replacement(e1_p1, p_ins_e1, e2_p1, e2_p2);
-				double replace_e2 = replacement(e2_p1, p_ins_e2, e1_p1, e1_p2);
-				double cover_e1 = coverage(e1_p1, p_ins_e1, e2_p1, e2_p2);
-				double cover_e2 = coverage(e2_p1, p_ins_e2, e1_p1, e1_p2);
+				// cost of project e2 onto e1
+				proj_e1		= projection(e1p1, e1p2, e2p2);
+				replacement = replacement(e1p1, proj_e1, e2p1, e2p2);
+				coverage	= coverage(e1p1, proj_e1, e2p1, e2p2);
+				cost_e1	    = replacement * coverage;
 
-				if((cover_e1*replace_e1) <= (cover_e2*replace_e2)){
+				// cost of project e1 onto e2
+				proj_e2 	= projection(e2p1, e2p2, e1p2);
+				replacement = replacement(e2p1, proj_e2, e1p1, e1p2);
+				coverage	= coverage(e2p1, proj_e2, e1p1, e1p2);
+				cost_e2	    = replacement * coverage;
+				
+				// check which edit is cheaper
+				if(cost_e1 <= cost_e2){
 					// replacement 1 is better
-					replacement = replace_e1;
-					coverage = cover_e1;
-					
-					// add the new point to T1
-					t1 = insert(t1, p_ins_e1);
+					edwp_cost += cost_e1;
+					// update T1
+					t1 = insert(t1, proj_e1);
 				} else {
 					// replacement 2 is better
-					replacement = replace_e2;
-					coverage = cover_e2;
-					
-					// add the new point to T1
-					t2 = insert(t2, p_ins_e2);
+					edwp_cost += cost_e2;
+					// update T2
+					t2 = insert(t2, proj_e2);
 				}
 			}
 			// end
 			else {
 				break;
 			}
-			
+			// move forward
 			t1 = rest(t1);
 			t2 = rest(t2);
-			
-			total_cost_edwp += (replacement * coverage);
 		}
 		
-		return total_cost_edwp;
+		return edwp_cost;
 	}
 	
 	/**
@@ -172,48 +169,53 @@ public class EDwP_OLD implements Serializable, TrajectoryDistanceCalculator {
 	}
 		
 	/**
-	 * Calculate the projection of the point p on to the segment e
+	 * Calculate the projection of the point p on to the segment
 	 * e = [e.p1, e.p2]
 	 */
 	private Point projection(Point e_p1, Point e_p2, Point p){
-		// get dot product of [e.p2 - e.p1] and [p_proj - p]
-		double dot_product = dotProduct(e_p1, e_p2, p);
-	
-		// get squared length of e
-		double len_2 = Math.pow(e_p2.x - e_p1.x, 2) + 
-					   Math.pow(e_p2.y - e_p1.y, 2);
-		
-		// Calculate the coordinates of p_proj (projection) using the
-		// dot product and the squared length of e
-		double x = e_p1.x + 
-			(dot_product * (e_p2.x - e_p1.x)) / len_2;
-		double y = e_p1.y + 
-			(dot_product * (e_p2.y - e_p1.y)) / len_2;
-		
-		// calculate the time of the projection
-		long time = (long)(e_p1.time + (e_p1.dist(p) * (e_p2.time - e_p1.time))/(e_p1.dist(e_p2)));
-		
-		Point p_proj = new Point(x, y, time);
-		
-		return p_proj;
+		// square length of the segment
+		double len_2 = dotProduct(e_p1, e_p2, e_p1, e_p2);
+		// e.p1 and e.p2 are the same point
+		if(len_2 == 0){
+			return e_p1;
+		}
+	    
+	    // the projection falls where t = [(p-e.p1) . (e.p2-e.p1)] / |e.p2-e.p1|^2
+	    double t = dotProduct(e_p1, p, e_p1, e_p2) / len_2;
+	    
+	    // "Before" e.p1 on the line
+	    if (t < 0.0) {
+	    	return e_p1;
+	    }
+	    // after e.p2 on the line 
+	    if(t > 1.0){
+	    	return e_p2;
+	    }
+	    // projection is "in between" e.p1 and e.p2
+	    // get projection coordinates
+	    double x = e_p1.x + t*(e_p2.x - e_p1.x);
+	    double y = e_p1.y + t*(e_p2.y - e_p1.y);
+	    long time = (long) (e_p1.time + t*(e_p2.time - e_p1.time));
+	   
+	    return new Point(x, y, time);
 	}
 	
 	/**
-	 * Calculates the dot product between segment e and point p.
-	 * e = [e.p1, e.p2]
+	 * Calculates the dot product between two segment e1 and e2.
 	 */
-	private double dotProduct(Point e_p1, Point e_p2, Point p){
-		// shift the points to the origin
-		double e1_x = e_p2.x - e_p1.x;
-		double e1_y = e_p2.y - e_p1.y;
-		double e2_x = p.x - e_p1.x;
-		double e2_y = p.y - e_p1.y;
+	private double dotProduct(Point e1_p1, Point e1_p2, Point e2_p1, Point e2_p2){
+		// shift the points to the origin - vector
+		double e1_x = e1_p2.x - e1_p1.x;
+		double e1_y = e1_p2.y - e1_p1.y;
+		double e2_x = e2_p2.x - e2_p1.x;
+		double e2_y = e2_p2.y - e2_p1.y;
 
 		// calculate the dot product
 		double dot_product = (e1_x * e2_x) + (e1_y * e2_y);
 		
 		return dot_product;
 	}
+	
 	/*
 	public static void main(String[] arg){
 

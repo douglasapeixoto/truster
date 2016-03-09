@@ -36,6 +36,11 @@ public class TrajectoryCollectorSub implements Serializable{
 	private JavaPairRDD<Integer, PartitionSub> partitionsRDD; 
 	private TrajectoryTrackTableSub trackTable;
 	
+	// log ifo
+	/*private static int TOTAL_TRAJ_FILTERED = 0;
+	private static int TOTAL_PARTITIONS_FILTERED = 0;
+	private static int TOTAL_PARTITIONS_TO_COLLECT = 0;*/
+	
 	/**
 	 * Creates a new collector.
 	 */
@@ -70,10 +75,10 @@ public class TrajectoryCollectorSub implements Serializable{
 			});
 
 		// collection log
-		/*System.out.println("Collect Trajectories by Page Index.");
-		System.out.println("Total Pages: " + pagesRDD.count());
-		System.out.println("Total Pages to Collect: " + filteredPagesRDD.count());
-		TOTAL_PAGES_TO_COLLECT += filteredPagesRDD.count();	*/
+		/*System.out.println("Collect Trajectories by Partition Index.");
+		System.out.println("Total Partitions: " + partitionsRDD.count());
+		System.out.println("Total Partitions to Collect: " + filteredPartitionsRDD.count());
+		TOTAL_PARTITIONS_TO_COLLECT += filteredPartitionsRDD.count();*/
 		
 		// check if there is any partition for the given parameters
 		// Note: (it might be there is no page in the given time interval for the given grid)
@@ -138,15 +143,15 @@ public class TrajectoryCollectorSub implements Serializable{
 			trajectoryRDD = postProcess(trajectoryRDD);
 			
 			// collection log
-			/*System.out.println("Total Pages Filtered: " + filteredPagesRDD.count());
-			System.out.println("Total Trajectories Filtered (TP+FP): " + idList.size());
+			/*System.out.println("Total Partitions Filtered: " + filteredPartitionsRDD.count());
+			System.out.println("Total Trajectories Filtered (TP+FP): " + tIdList.size());
 			System.out.println("Total Trajectories Collected (TP): " + trajectoryRDD.count());
-			TOTAL_TRAJ_FILTERED += idList.size();
-			TOTAL_PAGES_FILTERED += filteredPagesRDD.count();
+			TOTAL_TRAJ_FILTERED += tIdList.size();
+			TOTAL_PARTITIONS_FILTERED += filteredPartitionsRDD.count();
 			System.out.println("TOTAIS: ");
 			System.out.println("TOTAL TRAJ FILT.: " + TOTAL_TRAJ_FILTERED);
-			System.out.println("TOTAL PAGES FILT.: " + TOTAL_PAGES_FILTERED);
-			System.out.println("TOTAL PAGES TO COL.: " + TOTAL_PAGES_TO_COLLECT);*/
+			System.out.println("TOTAL PARTITIONS FILT.: " + TOTAL_PARTITIONS_FILTERED);
+			System.out.println("TOTAL PARTITIONS TO COL.: " + TOTAL_PARTITIONS_TO_COLLECT);*/
 			
 			return trajectoryRDD;
 		}

@@ -94,7 +94,8 @@ public class SegmentBag implements Serializable {
 		// remove duplicate points from each sub-trajectory
 		List<Trajectory> tList = new ArrayList<Trajectory>();
 		for(Trajectory aux : tListAux){
-			tList.add(aux.removeDuplicates());
+			aux.removeDuplicates();
+			tList.add(aux);
 		}
 
 		return tList;

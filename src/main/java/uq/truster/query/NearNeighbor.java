@@ -32,6 +32,7 @@ public class NearNeighbor extends Trajectory implements Serializable {
 		this.addPointList(t.getPointsList());
 		this.distance = dist;
 	}
+	public NearNeighbor() {}
 	
 	@Override
 	public int hashCode() {
